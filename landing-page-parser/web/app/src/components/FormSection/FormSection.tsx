@@ -1,4 +1,4 @@
-import {Button, Checkbox, FormControlLabel, Grid, TextField} from "@mui/material";
+import {Button, Checkbox, FormControlLabel, TextField} from "@mui/material";
 import React, {ChangeEvent, useState} from "react";
 import "./FormSection.css"
 import EmailInput from "./Inputs/EmailInput";
@@ -36,7 +36,7 @@ const FormSection: React.FC = (props) => {
                     variant="outlined"
                     value={nameInputValue}
                     onChange={(evt: ChangeEvent<HTMLInputElement>) => {
-                        handleInputChange(evt.target.value, setEmailInputValue)
+                        handleInputChange(evt.target.value, setNameInputValue)
                     }}
                     fullWidth
                 />
