@@ -1,0 +1,14 @@
+.form-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.form-section > form {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    width: clamp(150px, 90%, 500px);
+    padding: 10px 30px;
+    gap: 20px;
+}
