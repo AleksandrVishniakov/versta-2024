@@ -18,13 +18,13 @@ Orders service is a microservice for storing and managing user orders
 
 ## API docs
 ### API overview
-| Path                              | Method | Overview                                                |
-|-----------------------------------|--------|---------------------------------------------------------|
-| [/ping]()                         | GET    | pings server, returns 200 OK if server is healthy       |
-| [/auth]()                         | POST   | user authentication                                     |
-| [/api/orders]()                   | GET    | returns list of all user orders                         |
-| [/api/order]()                    | POST   | creates new order                                       |
-| [/api/order/{order_id}]()         | GET    | returns all information about order with ```order_id``` |
-| [/api/order/{order_id}/verify]()  | PUT    | marks order with ```order_id``` as verified             |
-| [/api/order/{order_id}/compete]() | PUT    | marks order with ```order_id``` as completed            |
-| [/api/order/{order_id}]()         | DELETE | deletes order with ```order_id```                       |
+| Path                             | Method | Overview                                               |
+|----------------------------------|--------|--------------------------------------------------------|
+| [/ping]()                        | GET    | pings server, returns 200 OK if server is healthy      |
+| [/auth]()                        | POST   | user authentication                                    |
+| [/api/orders]()                  | GET    | returns list of all user orders                        |
+| [/api/order]()                   | POST   | creates new order                                      |
+| [/api/order/{orderId}]()         | GET    | returns all information about order with ```orderId``` |
+| [/api/order/{orderId}/verify]()  | PUT    | marks order with ```orderId``` as verified             |
+| [/api/order/{orderId}/compete]() | PUT    | marks order with ```orderId``` as completed            |
+| [/api/order/{orderId}]()         | DELETE | deletes order with ```orderId```                       |

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
 	"io"
 	"log"
@@ -29,7 +30,9 @@ func main() {
 
 	logger.InitLogger(io.MultiWriter(os.Stdout, logFile), logLevel)
 
-	server := servers.NewHTTPServer(httpPort, nil)
+	handler := handlers.NewHTTPHandler()
+
+	server := servers.NewHTTPServer(httpPort, handler.InitRoutes())
 
 	if err := server.Run(); err != nil {
 		err := server.Shutdown(ctx)
