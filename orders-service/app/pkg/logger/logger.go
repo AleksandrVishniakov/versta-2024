@@ -6,8 +6,6 @@ import (
 	"log/slog"
 )
 
-const logLevelEnvKey = "LOG_LEVEL"
-
 const (
 	LevelProduction = slog.Level(-2)
 )
@@ -16,8 +14,8 @@ var levelNames = map[slog.Leveler]string{
 	LevelProduction: "PRODUCTION",
 }
 
-func InitLogger(writer io.Writer, getenv func(string) string) {
-	level := parseLogLevel(getenv(logLevelEnvKey))
+func InitLogger(writer io.Writer, logLevel string) {
+	level := parseLogLevel(logLevel)
 
 	options := &slog.HandlerOptions{
 		Level: level,
