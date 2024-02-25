@@ -14,16 +14,16 @@ func NewHTTPHandler() *HTTPHandler {
 func (h *HTTPHandler) InitRoutes() http.Handler {
 	var mux = http.NewServeMux()
 
-	mux.HandleFunc("GET /ping", Logger(pingHandler))
+	mux.HandleFunc("GET /ping", pingHandler)
 
-	mux.HandleFunc("GET /api/orders", Recovery(Logger(Errors(getAllOrders))))
-	mux.HandleFunc("POST /api/order", Recovery(Logger(Errors(createNewOrder))))
-	mux.HandleFunc("GET /api/order/{orderId}", Recovery(Logger(Errors(getOrder))))
-	mux.HandleFunc("DELETE /api/order/{orderId}", Recovery(Logger(Errors(deleteOrder))))
-	mux.HandleFunc("PUT /api/order/{orderId}/verify", Recovery(Logger(Errors(verifyOrder))))
-	mux.HandleFunc("PUT /api/order/{orderId}/complete", Recovery(Logger(Errors(completeOrder))))
+	mux.Handle("GET /api/orders", Errors(getAllOrders))
+	mux.Handle("POST /api/order", Errors(createNewOrder))
+	mux.Handle("GET /api/order/{orderId}", Errors(getOrder))
+	mux.Handle("DELETE /api/order/{orderId}", Errors(deleteOrder))
+	mux.Handle("PUT /api/order/{orderId}/verify", Errors(verifyOrder))
+	mux.Handle("PUT /api/order/{orderId}/complete", Errors(completeOrder))
 
-	return mux
+	return Recovery(Logger(mux))
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {

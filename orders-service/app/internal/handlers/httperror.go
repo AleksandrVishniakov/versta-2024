@@ -17,8 +17,8 @@ type ResponseError struct {
 	DeveloperCode int       `json:"developerCode"`
 }
 
-func Errors(next HandlerWithErr) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Errors(next HandlerWithErr) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := next(w, r)
 
 		if err == nil {
@@ -56,7 +56,7 @@ func Errors(next HandlerWithErr) http.HandlerFunc {
 			slog.String("time", time.Now().String()),
 			slog.Int("developer_code", devCode),
 		)
-	}
+	})
 }
 
 var errorCodes = map[error]int{}

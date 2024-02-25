@@ -22,8 +22,8 @@ func (r *writerRecorder) Write(bytes []byte) (int, error) {
 	return r.ResponseWriter.Write(bytes)
 }
 
-func Logger(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var startedAt = time.Now()
 
 		recorder := &writerRecorder{
@@ -52,7 +52,7 @@ func Logger(next http.HandlerFunc) http.HandlerFunc {
 				slog.String("duration", duration.String()),
 			),
 		)
-	}
+	})
 }
 
 func loggingMethod(status int) func(msg string, args ...any) {
