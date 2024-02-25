@@ -4,14 +4,7 @@ import (
 	"net/http"
 )
 
-type HTTPHandler struct {
-}
-
-func NewHTTPHandler() *HTTPHandler {
-	return &HTTPHandler{}
-}
-
-func (h *HTTPHandler) InitRoutes() http.Handler {
+func NewHTTPHandler() http.Handler {
 	var mux = http.NewServeMux()
 
 	mux.HandleFunc("GET /ping", pingHandler)

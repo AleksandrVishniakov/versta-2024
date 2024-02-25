@@ -28,7 +28,7 @@ func run(
 
 	handler := handlers.NewHTTPHandler()
 
-	server := servers.NewHTTPServer(httpPort, handler.InitRoutes())
+	server := servers.NewHTTPServer(httpPort, handler)
 
 	go func() {
 		for {
