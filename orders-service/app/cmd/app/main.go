@@ -12,7 +12,7 @@ import (
 	"os/signal"
 )
 
-const logFileName = "app.log"
+const logFileName = "logs/app.log"
 
 func run(
 	ctx context.Context,

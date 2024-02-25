@@ -11,7 +11,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./orders-service/app.log:/go/app.log
+      - ./orders-service/logs:/go/logs
 
   page-parser:
     image: versta-page-parser:local
@@ -25,4 +25,4 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./landing-page-parser/app.log:/go/app.log
+      - ./landing-page-parser/logs:/go/logs

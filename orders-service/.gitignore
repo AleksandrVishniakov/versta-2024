@@ -2,7 +2,7 @@
 .idea
 
 # App logs
-app.log
+logs/app.log
 
 # PostgreSQL data
 data

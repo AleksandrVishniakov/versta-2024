@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const logFileName = "app.log"
+const logFileName = "logs/app.log"
 
 const (
 	indexFilePath  = "web/app/build/index.html"
