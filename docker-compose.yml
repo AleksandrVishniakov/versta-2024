@@ -4,10 +4,19 @@ services:
   orders-service:
     image: versta-orders-service:local
     container_name: versta-orders-service
+    depends_on:
+      goose:
+        condition: service_completed_successfully
     environment:
       HTTP_PORT: 8000
       LOG_LEVEL: DEBUG
       AUTH_SERVICE_HOST: ""
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_NAME: orders-db
+      DB_PASSWORD: ${DB_PASSWORD}
+
     ports:
       - "8000:8000"
     volumes:
@@ -26,3 +35,32 @@ services:
       - "8080:8080"
     volumes:
       - ./landing-page-parser/logs:/go/logs
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: versta-orders-db
+    ports:
+      - "5003:5432"
+    environment:
+      - POSTGRES_DB=orders-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./orders-service/data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 2s
+      timeout: 10s
+      retries: 5
+
+  goose:
+    image: artsafin/goose-migrations:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./orders-service/db/migrations:/db/migrations
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "postgres://postgres:${DB_PASSWORD}@postgres:5432/orders-db?sslmode=disable"
+    command: [ "-dir", "/db/migrations", "up" ]

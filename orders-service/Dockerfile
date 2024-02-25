@@ -4,7 +4,7 @@ WORKDIR /go/src/versta-2024/orders-service
 
 COPY app ./app/
 
-COPY go.mod ./
+COPY go.mod go.sum ./
 
 RUN go mod download
 
