@@ -6,6 +6,7 @@ import (
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
@@ -33,6 +34,8 @@ func main() {
 	handler := handlers.NewHTTPHandler()
 
 	server := servers.NewHTTPServer(httpPort, handler.InitRoutes())
+
+	slog.Info("server started on http://localhost:" + httpPort)
 
 	if err := server.Run(); err != nil {
 		err := server.Shutdown(ctx)

@@ -1,9 +1,23 @@
 version: '3'
 
 services:
+  orders-service:
+    image: versta-orders-service:local
+    container_name: versta-orders-service
+    environment:
+      HTTP_PORT: 8000
+      LOG_LEVEL: DEBUG
+      AUTH_SERVICE_HOST: ""
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./orders-service/app.log:/go/app.log
+
   page-parser:
     image: versta-page-parser:local
     container_name: versta-page-parser
+    depends_on:
+      - orders-service
     environment:
       HTTP_PORT: 8080
       LOG_LEVEL: DEBUG
