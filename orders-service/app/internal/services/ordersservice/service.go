@@ -16,6 +16,8 @@ type OrdersService interface {
 
 	MarkAsVerified(id int, userId int) error
 	MarkAsCompleted(id int, userId int) error
+
+	Delete(id int, userId int) error
 }
 
 type ordersService struct {
@@ -27,6 +29,8 @@ func NewOrdersService(repo ordersrepo.OrdersRepository) OrdersService {
 }
 
 func (o *ordersService) Create(order *orders.OrderDTO) (int, error) {
+	order.Status = orders.StatusCreated
+
 	id, err := o.repository.Create(
 		orders.MapEntityFromDTO(order),
 	)
@@ -81,6 +85,15 @@ func (o *ordersService) MarkAsVerified(id int, userId int) error {
 
 func (o *ordersService) MarkAsCompleted(id int, userId int) error {
 	err := o.repository.UpdateStatus(id, userId, byte(orders.StatusCompleted))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *ordersService) Delete(id int, userId int) error {
+	err := o.repository.Delete(id, userId)
 	if err != nil {
 		return err
 	}

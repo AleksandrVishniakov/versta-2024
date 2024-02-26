@@ -7,19 +7,24 @@ import (
 )
 
 type writerRecorder struct {
-	http.ResponseWriter
+	w      http.ResponseWriter
 	body   []byte
 	status int
 }
 
 func (r *writerRecorder) WriteHeader(status int) {
 	r.status = status
+	r.w.WriteHeader(status)
+}
+
+func (r *writerRecorder) Header() http.Header {
+	return r.w.Header()
 }
 
 func (r *writerRecorder) Write(bytes []byte) (int, error) {
 	r.body = bytes
 
-	return r.ResponseWriter.Write(bytes)
+	return r.w.Write(bytes)
 }
 
 func Logger(next http.Handler) http.Handler {
@@ -27,9 +32,9 @@ func Logger(next http.Handler) http.Handler {
 		var startedAt = time.Now()
 
 		recorder := &writerRecorder{
-			ResponseWriter: w,
-			status:         http.StatusOK,
-			body:           make([]byte, 0),
+			w:      w,
+			status: http.StatusOK,
+			body:   make([]byte, 0),
 		}
 
 		next.ServeHTTP(recorder, r)

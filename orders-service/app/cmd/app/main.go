@@ -6,6 +6,7 @@ import (
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
 	"io"
 	"log"
@@ -40,14 +41,16 @@ func run(
 		return err
 	}
 
-	_, err = ordersrepo.NewOrdersRepository(db)
+	ordersRepo, err := ordersrepo.NewOrdersRepository(db)
 	if err != nil {
 		return err
 	}
 
-	handler := handlers.NewHTTPHandler()
+	ordersService := ordersservice.NewOrdersService(ordersRepo)
 
-	server := servers.NewHTTPServer(httpPort, handler)
+	handler := handlers.NewHTTPHandler(ordersService)
+
+	server := servers.NewHTTPServer(httpPort, handler.Handler())
 
 	go func() {
 		for {

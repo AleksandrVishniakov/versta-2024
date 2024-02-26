@@ -18,6 +18,8 @@ type OrdersRepository interface {
 	FindAll(userId int) ([]*OrderEntity, error)
 
 	UpdateStatus(id int, userId int, status byte) error
+
+	Delete(id int, userId int) error
 }
 
 type ordersRepository struct {
@@ -41,7 +43,7 @@ func (o *ordersRepository) Create(order *OrderEntity) (id int, err error) {
 				VALUES($1, $2, $3)
 				RETURNING id`,
 		order.UserId,
-		order.ExtraInformation,
+		order.ExtraInformation.String,
 		order.Status,
 	)
 
@@ -84,7 +86,8 @@ func (o *ordersRepository) FindAll(userId int) (orders []*OrderEntity, err error
 
 	rows, err := o.db.Query(
 		`SELECT * FROM orders o
-				WHERE user_id=$1`,
+				WHERE user_id=$1
+				ORDER BY id`,
 		userId,
 	)
 
@@ -116,6 +119,17 @@ func (o *ordersRepository) UpdateStatus(id int, userId int, status byte) error {
 		id,
 		userId,
 		status,
+	)
+
+	return wrapErr(err)
+}
+
+func (o *ordersRepository) Delete(id int, userId int) error {
+	_, err := o.db.Exec(
+		`DELETE FROM orders
+				WHERE id=$1 AND user_id=$2`,
+		id,
+		userId,
 	)
 
 	return wrapErr(err)

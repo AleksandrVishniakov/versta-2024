@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/validator"
 	"io"
+	"net/http"
 )
 
 func Encode[T any](writer io.Writer, obj T) error {
@@ -13,6 +14,12 @@ func Encode[T any](writer io.Writer, obj T) error {
 	}
 
 	return nil
+}
+
+func EncodeResponse[T any](writer http.ResponseWriter, obj T, statusCode int) error {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(statusCode)
+	return Encode(writer, obj)
 }
 
 func Decode[T any](reader io.Reader) (T, error) {
