@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
@@ -27,14 +28,18 @@ func run(
 
 	logger.InitLogger(writer, logLevel)
 
-	_, err := postgres.NewPostgresDB(&postgres.DBConfigs{
+	db, err := postgres.NewPostgresDB(&postgres.DBConfigs{
 		Host:     getenv("DB_HOST"),
 		Port:     getenv("DB_PORT"),
 		Username: getenv("DB_USERNAME"),
 		DBName:   getenv("DB_NAME"),
 		Password: getenv("DB_PASSWORD"),
 	})
+	if err != nil {
+		return err
+	}
 
+	_, err = ordersrepo.NewOrdersRepository(db)
 	if err != nil {
 		return err
 	}

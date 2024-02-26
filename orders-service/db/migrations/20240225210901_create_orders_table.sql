@@ -3,7 +3,8 @@
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
     user_id SERIAL NOT NULL CHECK ( user_id > 0 ),
-    extra_information TEXT
+    extra_information TEXT,
+    status smallint NOT NULL
 );
 -- +goose StatementEnd
 
