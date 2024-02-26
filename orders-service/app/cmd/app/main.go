@@ -20,6 +20,7 @@ func run(
 	ctx context.Context,
 	getenv func(string) string,
 	writer io.Writer,
+	errorsCh chan<- error,
 ) error {
 	var (
 		httpPort = getenv("HTTP_PORT")
@@ -64,7 +65,8 @@ func run(
 
 	slog.Info("server started on http://localhost:" + httpPort)
 	if err := server.Run(); err != nil {
-		return err
+		errorsCh <- err
+		return nil
 	}
 
 	return nil
@@ -82,7 +84,13 @@ func main() {
 
 	logWriter := io.MultiWriter(os.Stdout, logFile)
 
-	if err := run(ctx, os.Getenv, logWriter); err != nil {
+	var errorsCh = make(chan error)
+	err = run(ctx, os.Getenv, logWriter, errorsCh)
+	if err != nil {
+		slog.Error("server starting error", slog.String("error", err.Error()))
+	}
+
+	if err := <-errorsCh; err != nil {
 		slog.Error("server running error", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
