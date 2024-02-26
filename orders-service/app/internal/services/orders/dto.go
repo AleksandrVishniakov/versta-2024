@@ -1,6 +1,10 @@
 package orders
 
-import "fmt"
+import (
+	"database/sql"
+	"fmt"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
+)
 
 type OrderDTO struct {
 	Id               int    `json:"id"`
@@ -23,4 +27,22 @@ func (o *OrderDTO) Valid() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func MapEntityFromDTO(order *OrderDTO) *ordersrepo.OrderEntity {
+	return &ordersrepo.OrderEntity{
+		Id:               order.Id,
+		UserId:           order.UserId,
+		ExtraInformation: sql.NullString{String: order.ExtraInformation},
+		Status:           byte(order.Status),
+	}
+}
+
+func MapDTOFromEntity(entity *ordersrepo.OrderEntity) *OrderDTO {
+	return &OrderDTO{
+		Id:               entity.Id,
+		UserId:           entity.UserId,
+		ExtraInformation: entity.ExtraInformation.String,
+		Status:           OrderStatus(entity.Status),
+	}
 }

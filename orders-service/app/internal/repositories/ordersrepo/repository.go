@@ -17,7 +17,7 @@ type OrdersRepository interface {
 	FindById(id int, userId int) (*OrderEntity, error)
 	FindAll(userId int) ([]*OrderEntity, error)
 
-	UpdateStatus(id int, userId int, status int) error
+	UpdateStatus(id int, userId int, status byte) error
 }
 
 type ordersRepository struct {
@@ -108,7 +108,7 @@ func (o *ordersRepository) FindAll(userId int) (orders []*OrderEntity, err error
 	return orders, nil
 }
 
-func (o *ordersRepository) UpdateStatus(id int, userId int, status int) error {
+func (o *ordersRepository) UpdateStatus(id int, userId int, status byte) error {
 	_, err := o.db.Exec(
 		`UPDATE orders
 				SET status=$3
