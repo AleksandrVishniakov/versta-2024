@@ -2,8 +2,10 @@ package ordersservice
 
 import (
 	"errors"
+
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
 )
 
 var ErrNoOrders = errors.New("no orders found")
@@ -22,17 +24,29 @@ type OrdersService interface {
 
 type ordersService struct {
 	repository ordersrepo.OrdersRepository
+	crypt      *encryptor.Encryptor
 }
 
-func NewOrdersService(repo ordersrepo.OrdersRepository) OrdersService {
-	return &ordersService{repository: repo}
+func NewOrdersService(
+	repo ordersrepo.OrdersRepository,
+	crypt *encryptor.Encryptor,
+) OrdersService {
+	return &ordersService{
+		repository: repo,
+		crypt:      crypt,
+	}
 }
 
 func (o *ordersService) Create(order *orders.OrderDTO) (int, error) {
 	order.Status = orders.StatusCreated
 
+	entity, err := orders.MapEntityFromDTO(order, o.crypt)
+	if err != nil {
+		return 0, err
+	}
+
 	id, err := o.repository.Create(
-		orders.MapEntityFromDTO(order),
+		entity,
 	)
 
 	if err != nil {
@@ -52,7 +66,12 @@ func (o *ordersService) FindById(id int, userId int) (*orders.OrderDTO, error) {
 		return nil, err
 	}
 
-	return orders.MapDTOFromEntity(entity), nil
+	order, err := orders.MapDTOFromEntity(entity, o.crypt)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }
 
 func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
@@ -64,7 +83,12 @@ func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
 	var userOrders []*orders.OrderDTO
 
 	for _, e := range entities {
-		userOrders = append(userOrders, orders.MapDTOFromEntity(e))
+		order, err := orders.MapDTOFromEntity(e, o.crypt)
+		if err != nil {
+			return nil, err
+		}
+
+		userOrders = append(userOrders, order)
 	}
 
 	if len(userOrders) == 0 {

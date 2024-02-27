@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 )
@@ -36,10 +37,17 @@ func (e *Encryptor) Encrypt(data []byte) ([]byte, error) {
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(ciphertext[aes.BlockSize:], data)
 
-	return ciphertext, nil
+	str := base64.StdEncoding.EncodeToString(ciphertext)
+
+	return []byte(str), nil
 }
 
-func (e *Encryptor) Decrypt(data []byte) ([]byte, error) {
+func (e *Encryptor) Decrypt(encryptedData []byte) ([]byte, error) {
+	data, err := base64.StdEncoding.DecodeString(string(encryptedData))
+	if err != nil {
+		return nil, err
+	}
+
 	block, err := aes.NewCipher(e.key)
 	if err != nil {
 		return nil, err

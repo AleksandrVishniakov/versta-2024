@@ -3,7 +3,9 @@ package orders
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
 )
 
 type OrderDTO struct {
@@ -21,20 +23,30 @@ func (o *OrderDTO) Valid() (bool, error) {
 	return true, nil
 }
 
-func MapEntityFromDTO(order *OrderDTO) *ordersrepo.OrderEntity {
+func MapEntityFromDTO(order *OrderDTO, crypt *encryptor.Encryptor) (*ordersrepo.OrderEntity, error) {
+	encryptedInfo, err := crypt.Encrypt([]byte(order.ExtraInformation))
+	if err != nil {
+		return nil, err
+	}
+
 	return &ordersrepo.OrderEntity{
 		Id:               order.Id,
 		UserId:           order.UserId,
-		ExtraInformation: sql.NullString{String: order.ExtraInformation},
+		ExtraInformation: sql.NullString{String: string(encryptedInfo)},
 		Status:           byte(order.Status),
-	}
+	}, nil
 }
 
-func MapDTOFromEntity(entity *ordersrepo.OrderEntity) *OrderDTO {
+func MapDTOFromEntity(entity *ordersrepo.OrderEntity, crypt *encryptor.Encryptor) (*OrderDTO, error) {
+	decryptedInfo, err := crypt.Decrypt([]byte(entity.ExtraInformation.String))
+	if err != nil {
+		return nil, err
+	}
+
 	return &OrderDTO{
 		Id:               entity.Id,
 		UserId:           entity.UserId,
-		ExtraInformation: entity.ExtraInformation.String,
+		ExtraInformation: string(decryptedInfo),
 		Status:           OrderStatus(entity.Status),
-	}
+	}, nil
 }

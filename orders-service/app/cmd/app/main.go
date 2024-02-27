@@ -7,6 +7,7 @@ import (
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
 	"io"
 	"log"
@@ -46,7 +47,8 @@ func run(
 		return err
 	}
 
-	ordersService := ordersservice.NewOrdersService(ordersRepo)
+	ordersEncryptor := encryptor.NewEncryptor([]byte(getenv("ORDERS_CRYPTO_KEY")))
+	ordersService := ordersservice.NewOrdersService(ordersRepo, ordersEncryptor)
 
 	handler := handlers.NewHTTPHandler(ordersService)
 
