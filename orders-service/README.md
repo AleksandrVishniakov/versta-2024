@@ -21,7 +21,6 @@ Orders service is a microservice for storing and managing user orders
 | Path                             | Method | Overview                                               |
 |----------------------------------|--------|--------------------------------------------------------|
 | [/ping]()                        | GET    | pings server, returns 200 OK if server is healthy      |
-| [/auth]()                        | POST   | user authentication                                    |
 | [/api/orders]()                  | GET    | returns list of all user orders                        |
 | [/api/order]()                   | POST   | creates new order                                      |
 | [/api/order/{orderId}]()         | GET    | returns all information about order with ```orderId``` |
