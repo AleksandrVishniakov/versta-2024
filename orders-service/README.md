@@ -11,10 +11,14 @@ Orders service is a microservice for storing and managing user orders
     + ```WARNING```
     + ```ERROR```
 * ```AUTH_SERVICE_HOST``` - host of [auth service]() for authenticating
+* ```DB_HOST```
+* ```DB_PORT```
+* ```DB_USERNAME```
+* ```DB_NAME```
 
 ### Private (initialized in ```.env```):
 * ```DB_PASSWORD``` - password for PostgreSQL database
-* ```COOKIE_KEY``` - key for encrypting cookies
+* ```ORDERS_CRYPTO_KEY``` - key for encrypting orders data
 
 ## API docs
 ### API overview

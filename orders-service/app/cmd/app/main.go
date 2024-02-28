@@ -2,6 +2,12 @@ package main
 
 import (
 	"context"
+	"io"
+	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
@@ -9,11 +15,6 @@ import (
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
-	"io"
-	"log"
-	"log/slog"
-	"os"
-	"os/signal"
 )
 
 const logFileName = "logs/app.log"
