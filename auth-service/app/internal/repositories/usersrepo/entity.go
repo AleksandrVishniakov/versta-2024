@@ -6,9 +6,10 @@ import (
 )
 
 type UserEntity struct {
-	Id              int
-	Email           string
-	Name            sql.NullString
-	IsEmailVerified bool
-	CreatedAt       time.Time
+	Id                    int
+	Email                 string
+	Name                  sql.NullString
+	IsEmailVerified       bool
+	EmailVerificationCode sql.NullString
+	CreatedAt             time.Time
 }

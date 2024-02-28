@@ -19,6 +19,7 @@ type UsersRepository interface {
 	FindBySessionKey(sessionKey string) (*UserEntity, error)
 
 	UpdateName(id int, name string) error
+	UpdateVerificationCode(id int, code string) error
 	MarkEmailAsVerified(id int) error
 }
 
@@ -39,11 +40,12 @@ func (u *usersRepository) Create(user *UserEntity) (id int, err error) {
 	defer func() { err = wrapErr(err) }()
 
 	row := u.db.QueryRow(
-		`INSERT INTO users (email, name)
-				VALUES ($1, $2)
+		`INSERT INTO users (email, name, email_verification_code)
+				VALUES ($1, $2, $3)
 				RETURNING id`,
 		user.Email,
 		user.Name,
+		user.EmailVerificationCode,
 	)
 
 	id = 0
@@ -67,7 +69,7 @@ func (u *usersRepository) FindById(id int) (user *UserEntity, err error) {
 
 	user = &UserEntity{}
 
-	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.IsEmailVerified, &user.CreatedAt)
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
 	}
@@ -91,7 +93,7 @@ func (u *usersRepository) FindBySessionKey(sessionKey string) (user *UserEntity,
 
 	user = &UserEntity{}
 
-	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.IsEmailVerified, &user.CreatedAt)
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
 	}
@@ -112,6 +114,20 @@ func (u *usersRepository) UpdateName(id int, name string) (err error) {
 				WHERE id=$1`,
 		id,
 		name,
+	)
+
+	return err
+}
+
+func (u *usersRepository) UpdateVerificationCode(id int, code string) (err error) {
+	defer func() { err = wrapErr(err) }()
+
+	_, err = u.db.Exec(
+		`UPDATE users
+				SET email_verification_code=$2
+				WHERE id=$1`,
+		id,
+		code,
 	)
 
 	return err

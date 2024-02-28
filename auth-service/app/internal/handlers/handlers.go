@@ -18,11 +18,28 @@ func (h *HTTPHandler) Handler() http.Handler {
 
 	mux.HandleFunc("GET /ping", h.pingHandler)
 
+	mux.HandleFunc("GET /auth", h.handleAuthentication)
+	mux.HandleFunc("GET /{email}/verify", h.handleEmailVerification)
+
+	mux.HandleFunc("GET /user/{id}", h.getUser)
+
 	return Recovery(Logger(mux))
 }
 
 func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *HTTPHandler) handleAuthentication(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *HTTPHandler) getUser(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func closeReadCloser(r io.ReadCloser) {
