@@ -5,23 +5,44 @@ services:
     image: versta-orders-service:local
     container_name: versta-orders-service
     depends_on:
-      goose:
+      goose-orders:
         condition: service_completed_successfully
     environment:
       HTTP_PORT: 8000
       LOG_LEVEL: DEBUG
-      AUTH_SERVICE_HOST: ""
+      AUTH_SERVICE_HOST: "http://auth-service"
       ORDERS_CRYPTO_KEY: ${ORDERS_CRYPTO_KEY}
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_HOST: postgres-orders
+      DB_PORT: 5003
       DB_USERNAME: postgres
       DB_NAME: orders-db
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD: ${ORDERS_DB_PASSWORD}
 
     ports:
       - "8000:8000"
     volumes:
       - ./orders-service/logs:/go/logs
+
+  auth-service:
+    image: versta-auth-service:local
+    container_name: versta-auth-service
+    depends_on:
+      goose-auth:
+        condition: service_completed_successfully
+    environment:
+      HTTP_PORT: 8001
+      LOG_LEVEL: DEBUG
+      DB_HOST: postgres-auth
+      DB_PORT: 5004
+      DB_USERNAME: postgres
+      DB_NAME: auth-db
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      SESSION_EXPIRATION_TIME_MS: 900000
+
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./auth-service/logs:/go/logs
 
   page-parser:
     image: versta-page-parser:local
@@ -37,31 +58,66 @@ services:
     volumes:
       - ./landing-page-parser/logs:/go/logs
 
-  postgres:
+  postgres-orders:
     image: postgres:14-alpine
     container_name: versta-orders-db
     ports:
-      - "5003:5432"
+      - "5003:5003"
+    expose:
+      - "5003"
+    command: -p 5003
     environment:
       - POSTGRES_DB=orders-db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=${ORDERS_DB_PASSWORD}
     volumes:
       - ./orders-service/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 2s
+      test: [ "CMD-SHELL", "pg_isready -U postgres -p 5003" ]
+      interval: 5s
       timeout: 10s
       retries: 5
 
-  goose:
+  goose-orders:
     image: artsafin/goose-migrations:latest
     depends_on:
-      postgres:
+      postgres-orders:
         condition: service_healthy
     volumes:
       - ./orders-service/db/migrations:/db/migrations
     environment:
       GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: "postgres://postgres:${DB_PASSWORD}@postgres:5432/orders-db?sslmode=disable"
+      GOOSE_DBSTRING: "postgres://postgres:${ORDERS_DB_PASSWORD}@postgres-orders:5003/orders-db?sslmode=disable"
+    command: [ "-dir", "/db/migrations", "up" ]
+
+  postgres-auth:
+    image: postgres:14-alpine
+    container_name: versta-auth-db
+    ports:
+      - "5004:5004"
+    expose:
+      - "5004"
+    command: -p 5004
+    environment:
+      - POSTGRES_DB=auth-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${AUTH_DB_PASSWORD}
+    volumes:
+      - ./auth-service/data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -p 5004" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  goose-auth:
+    image: artsafin/goose-migrations:latest
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    volumes:
+      - ./auth-service/db/migrations:/db/migrations
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "postgres://postgres:${AUTH_DB_PASSWORD}@postgres-auth:5004/auth-db?sslmode=disable"
     command: [ "-dir", "/db/migrations", "up" ]
