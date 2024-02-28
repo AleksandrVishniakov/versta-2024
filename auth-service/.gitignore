@@ -1,0 +1,11 @@
+# IntelliJ IDE configs
+.idea
+
+# App logs
+logs/app.log
+
+# PostgreSQL data
+data
+
+# Private environment variables
+.env
