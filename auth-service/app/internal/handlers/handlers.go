@@ -6,6 +6,12 @@ import (
 	"net/http"
 )
 
+const (
+	codeQueryName       = "code"
+	emailQueryName      = "email"
+	sessionKeyQueryName = "sessionKey"
+)
+
 type HTTPHandler struct {
 }
 
@@ -18,12 +24,14 @@ func (h *HTTPHandler) Handler() http.Handler {
 
 	mux.HandleFunc("GET /ping", h.pingHandler)
 
-	mux.HandleFunc("GET /auth", h.handleAuthentication)
-	mux.HandleFunc("GET /{email}/verify", h.handleEmailVerification)
+	mux.HandleFunc("GET /api/auth", h.handleAuthentication)
+	mux.HandleFunc("GET /api/{email}/verify", h.handleEmailVerification)
 
-	mux.HandleFunc("GET /user/{id}", h.getUser)
+	mux.HandleFunc("GET /api/user", h.getUser)
 
-	return Recovery(Logger(mux))
+	mux.HandleFunc("GET /api/internal/user/{email}/verification_code", h.getUserVerificationCode)
+
+	return Recovery(Logger(Cookies(mux)))
 }
 
 func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
@@ -39,6 +47,10 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 }
 
 func (h *HTTPHandler) getUser(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *HTTPHandler) getUserVerificationCode(w http.ResponseWriter, r *http.Request) {
 
 }
 
