@@ -42,7 +42,7 @@ func run(
 
 	handler := handlers.NewHTTPHandler()
 
-	server := servers.NewHTTPServer(httpPort, handler.Handler())
+	server := servers.NewHTTPServer(ctx, httpPort, handler.Handler())
 
 	go func() {
 		for {

@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"net"
 	"net/http"
 )
 
@@ -9,11 +10,14 @@ type HTTPServer struct {
 	httpServer *http.Server
 }
 
-func NewHTTPServer(port string, handler http.Handler) *HTTPServer {
+func NewHTTPServer(ctx context.Context, port string, handler http.Handler) *HTTPServer {
 	return &HTTPServer{
 		httpServer: &http.Server{
 			Addr:    ":" + port,
 			Handler: handler,
+			BaseContext: func(net.Listener) context.Context {
+				return ctx
+			},
 		},
 	}
 }
