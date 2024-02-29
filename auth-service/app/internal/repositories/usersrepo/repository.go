@@ -15,7 +15,6 @@ var (
 type UsersRepository interface {
 	Create(user *UserEntity) (int, error)
 
-	FindById(id int) (*UserEntity, error)
 	FindBySessionKey(sessionKey string) (*UserEntity, error)
 
 	UpdateName(id int, name string) error
@@ -56,29 +55,6 @@ func (u *usersRepository) Create(user *UserEntity) (id int, err error) {
 	}
 
 	return id, nil
-}
-
-func (u *usersRepository) FindById(id int) (user *UserEntity, err error) {
-	defer func() { err = wrapErr(err) }()
-
-	row := u.db.QueryRow(
-		`SELECT * FROM users
-				WHERE id=$1`,
-		id,
-	)
-
-	user = &UserEntity{}
-
-	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrUserNotFound
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return user, err
 }
 
 func (u *usersRepository) FindBySessionKey(sessionKey string) (user *UserEntity, err error) {
