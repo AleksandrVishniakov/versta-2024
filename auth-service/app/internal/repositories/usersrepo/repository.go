@@ -16,6 +16,7 @@ type UsersRepository interface {
 	Create(user *UserEntity) (int, error)
 
 	FindBySessionKey(sessionKey string) (*UserEntity, error)
+	FindByEmail(email string) (*UserEntity, error)
 
 	UpdateName(id int, name string) error
 	UpdateVerificationCode(id int, code string) error
@@ -65,6 +66,29 @@ func (u *usersRepository) FindBySessionKey(sessionKey string) (user *UserEntity,
            		JOIN sessions s ON u.id = s.user_id
 				WHERE s.session_key=$1`,
 		sessionKey,
+	)
+
+	user = &UserEntity{}
+
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, err
+}
+
+func (u *usersRepository) FindByEmail(email string) (user *UserEntity, err error) {
+	defer func() { err = wrapErr(err) }()
+
+	row := u.db.QueryRow(
+		`SELECT u.* FROM users u
+				WHERE u.email = $1`,
+		email,
 	)
 
 	user = &UserEntity{}
