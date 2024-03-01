@@ -19,11 +19,6 @@ type VerificationCodeDTO struct {
 }
 
 func mapResponseFromEntity(crypt *encryptor.Encryptor, entity *usersrepo.UserEntity) (*UserResponseDTO, error) {
-	email, err := crypt.Decrypt([]byte(entity.Email))
-	if err != nil {
-		return nil, err
-	}
-
 	var name string
 	if entity.Name.Valid {
 		nameBytes, err := crypt.Decrypt([]byte(entity.Name.String))
@@ -36,7 +31,7 @@ func mapResponseFromEntity(crypt *encryptor.Encryptor, entity *usersrepo.UserEnt
 
 	return &UserResponseDTO{
 		Id:              entity.Id,
-		Email:           string(email),
+		Email:           entity.Email,
 		Name:            name,
 		IsEmailVerified: entity.IsEmailVerified,
 		CreatedAt:       entity.CreatedAt,
