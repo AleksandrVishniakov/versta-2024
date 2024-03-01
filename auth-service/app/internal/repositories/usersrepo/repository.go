@@ -122,12 +122,18 @@ func (u *usersRepository) UpdateName(id int, name string) (err error) {
 func (u *usersRepository) UpdateVerificationCode(id int, code string) (err error) {
 	defer func() { err = wrapErr(err) }()
 
+	var verificationCode = code
+
+	if verificationCode == "" {
+		verificationCode = "null"
+	}
+
 	_, err = u.db.Exec(
 		`UPDATE users
 				SET email_verification_code=$2
 				WHERE id=$1`,
 		id,
-		code,
+		verificationCode,
 	)
 
 	return err
