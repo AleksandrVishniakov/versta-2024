@@ -18,6 +18,7 @@ Orders service is a microservice for storing and managing user orders
 
 ### Private (initialized in ```.env```):
 * ```DB_PASSWORD``` - password for PostgreSQL database
+* ```AUTH_CRYPTO_KEY``` - crypto key for encoding user data (must be 32 bytes length)
 
 ## API docs
 ### API overview
