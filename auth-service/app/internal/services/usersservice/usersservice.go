@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/sessionsrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 )
@@ -24,38 +23,31 @@ type UsersService interface {
 	VerifyEmail(email string, code string) error
 
 	FindBySessionKey(sessionKey string) (*UserResponseDTO, error)
+	FindByEmail(email string) (*UserResponseDTO, error)
 	GetVerificationCode(email string) (*VerificationCodeDTO, error)
 
 	UpdateName(id int, name string) error
 }
 
 type usersService struct {
-	ctx                context.Context
-	usersRepository    usersrepo.UsersRepository
-	sessionsRepository sessionsrepo.SessionsRepository
-	crypt              *encryptor.Encryptor
+	ctx             context.Context
+	usersRepository usersrepo.UsersRepository
+	crypt           *encryptor.Encryptor
 }
 
 func NewUsersService(
 	ctx context.Context,
 	usersRepository usersrepo.UsersRepository,
-	sessionsRepository sessionsrepo.SessionsRepository,
 	crypt *encryptor.Encryptor,
 ) UsersService {
 	return &usersService{
-		ctx:                ctx,
-		usersRepository:    usersRepository,
-		sessionsRepository: sessionsRepository,
-		crypt:              crypt,
+		ctx:             ctx,
+		usersRepository: usersRepository,
+		crypt:           crypt,
 	}
 }
 
 func (u *usersService) Register(email string) (int, error) {
-	email, err := encryptString(u.crypt, email)
-	if err != nil {
-		return 0, err
-	}
-
 	user, err := u.usersRepository.FindByEmail(email)
 
 	if errors.Is(err, usersrepo.ErrUserNotFound) {
@@ -70,21 +62,12 @@ func (u *usersService) Register(email string) (int, error) {
 }
 
 func (u *usersService) VerifyEmail(email string, code string) error {
-	email, err := encryptString(u.crypt, email)
-	if err != nil {
-		return err
-	}
-
 	user, err := u.usersRepository.FindByEmail(email)
 	if errors.Is(err, usersrepo.ErrUserNotFound) {
 		return ErrUserNotFound
 	}
 	if err != nil {
 		return err
-	}
-
-	if user.IsEmailVerified {
-		return nil
 	}
 
 	var userCode = user.EmailVerificationCode.String
@@ -97,9 +80,11 @@ func (u *usersService) VerifyEmail(email string, code string) error {
 		return err
 	}
 
-	err = u.usersRepository.MarkEmailAsVerified(user.Id)
-	if err != nil {
-		return err
+	if !user.IsEmailVerified {
+		err = u.usersRepository.MarkEmailAsVerified(user.Id)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -107,6 +92,28 @@ func (u *usersService) VerifyEmail(email string, code string) error {
 
 func (u *usersService) FindBySessionKey(sessionKey string) (*UserResponseDTO, error) {
 	entity, err := u.usersRepository.FindBySessionKey(sessionKey)
+	if errors.Is(err, usersrepo.ErrUserNotFound) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := mapResponseFromEntity(u.crypt, entity)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *usersService) FindByEmail(email string) (*UserResponseDTO, error) {
+	entity, err := u.usersRepository.FindByEmail(email)
+	if errors.Is(err, usersrepo.ErrUserNotFound) {
+		return nil, ErrUserNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +127,6 @@ func (u *usersService) FindBySessionKey(sessionKey string) (*UserResponseDTO, er
 }
 
 func (u *usersService) GetVerificationCode(email string) (*VerificationCodeDTO, error) {
-	email, err := encryptString(u.crypt, email)
-	if err != nil {
-		return nil, err
-	}
-
 	user, err := u.usersRepository.FindByEmail(email)
 
 	if errors.Is(err, usersrepo.ErrUserNotFound) {
@@ -147,30 +149,25 @@ func (u *usersService) UpdateName(id int, name string) error {
 	return err
 }
 
-func (u *usersService) authNewUser(encryptedEmail string) (int, error) {
+func (u *usersService) authNewUser(email string) (int, error) {
 	newUser := &usersrepo.UserEntity{
-		Email:                 encryptedEmail,
+		Email:                 email,
 		EmailVerificationCode: sql.NullString{String: newVerificationCode()},
 	}
 
 	id, err := u.usersRepository.Create(newUser)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
-	user, err := u.usersRepository.FindByEmail(encryptedEmail)
+	user, err := u.usersRepository.FindByEmail(email)
 	if err != nil {
-		return 0, nil
-	}
-
-	email, err := decryptString(u.crypt, user.Email)
-	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	err = u.sendVerificationCode(email, user.EmailVerificationCode.String)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	return id, nil
@@ -184,14 +181,9 @@ func (u *usersService) authExistingUser(user *usersrepo.UserEntity) (int, error)
 		return 0, err
 	}
 
-	email, err := decryptString(u.crypt, user.Email)
+	err = u.sendVerificationCode(user.Email, newCode)
 	if err != nil {
-		return 0, nil
-	}
-
-	err = u.sendVerificationCode(email, newCode)
-	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	return user.Id, nil
@@ -227,14 +219,4 @@ func encryptString(crypt *encryptor.Encryptor, str string) (string, error) {
 	}
 
 	return string(encrBytes), nil
-}
-
-func decryptString(crypt *encryptor.Encryptor, str string) (string, error) {
-	decrBytes, err := crypt.Decrypt([]byte(str))
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(decrBytes), nil
 }
