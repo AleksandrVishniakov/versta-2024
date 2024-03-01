@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 	"io"
 	"log"
 	"log/slog"
@@ -29,7 +32,9 @@ func run(
 
 	logger.InitLogger(writer, logLevel)
 
-	_, err := postgres.NewPostgresDB(&postgres.DBConfigs{
+	crypt := encryptor.NewEncryptor([]byte(getenv("AUTH_CRYPTO_KEY")))
+
+	db, err := postgres.NewPostgresDB(&postgres.DBConfigs{
 		Host:     getenv("DB_HOST"),
 		Port:     getenv("DB_PORT"),
 		Username: getenv("DB_USERNAME"),
@@ -40,7 +45,14 @@ func run(
 		return err
 	}
 
-	handler := handlers.NewHTTPHandler()
+	userRepository, err := usersrepo.NewUsersRepository(db)
+	if err != nil {
+		return err
+	}
+
+	userService := usersservice.NewUsersService(ctx, userRepository, crypt)
+
+	handler := handlers.NewHTTPHandler(userService)
 
 	server := servers.NewHTTPServer(ctx, httpPort, handler.Handler())
 
