@@ -3,7 +3,6 @@ package usersrepo
 import (
 	"database/sql"
 	"errors"
-
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/e"
 )
 
@@ -45,7 +44,7 @@ func (u *usersRepository) Create(user *UserEntity) (id int, err error) {
 				RETURNING id`,
 		user.Email,
 		user.Name,
-		user.EmailVerificationCode,
+		user.EmailVerificationCode.String,
 	)
 
 	id = 0
@@ -122,10 +121,10 @@ func (u *usersRepository) UpdateName(id int, name string) (err error) {
 func (u *usersRepository) UpdateVerificationCode(id int, code string) (err error) {
 	defer func() { err = wrapErr(err) }()
 
-	var verificationCode = code
+	var verificationCode = &code
 
-	if verificationCode == "" {
-		verificationCode = "null"
+	if *verificationCode == "" {
+		verificationCode = nil
 	}
 
 	_, err = u.db.Exec(
