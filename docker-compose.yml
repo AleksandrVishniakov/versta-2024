@@ -32,6 +32,7 @@ services:
     environment:
       HTTP_PORT: 8001
       LOG_LEVEL: DEBUG
+      AUTH_CRYPTO_KEY: ${AUTH_CRYPTO_KEY}
       DB_HOST: postgres-auth
       DB_PORT: 5004
       DB_USERNAME: postgres
