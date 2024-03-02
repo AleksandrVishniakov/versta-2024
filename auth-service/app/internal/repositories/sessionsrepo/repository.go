@@ -9,11 +9,15 @@ import (
 
 var (
 	ErrUnavailableDatabase = errors.New("database is unavailable")
+	ErrSessionNotFound     = errors.New("session not found")
 )
 
 type SessionsRepository interface {
-	Delete(id int) error
 	Create(session *SessionEntity) error
+
+	FindByKey(sessionKey string) (*SessionEntity, error)
+
+	Delete(id int) error
 }
 
 type sessionRepository struct {
@@ -39,6 +43,29 @@ func (s *sessionRepository) Delete(id int) (err error) {
 	)
 
 	return err
+}
+
+func (s *sessionRepository) FindByKey(sessionKey string) (session *SessionEntity, err error) {
+	defer func() { err = wrapErr(err) }()
+
+	row := s.db.QueryRow(
+		`SELECT s.* FROM sessions s
+				WHERE s.session_key = $1`,
+		sessionKey,
+	)
+
+	session = &SessionEntity{}
+
+	err = row.Scan(&session.Id, &session.UserId, &session.SessionKey, &session.CreatedAt, &session.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrSessionNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
 }
 
 func (s *sessionRepository) Create(session *SessionEntity) (err error) {
