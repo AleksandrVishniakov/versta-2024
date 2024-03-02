@@ -17,6 +17,8 @@ type SessionsRepository interface {
 
 	FindByKey(sessionKey string) (*SessionEntity, error)
 
+	UpdateKey(oldKey, newKey string) error
+
 	Delete(id int) error
 }
 
@@ -56,7 +58,7 @@ func (s *sessionRepository) FindByKey(sessionKey string) (session *SessionEntity
 
 	session = &SessionEntity{}
 
-	err = row.Scan(&session.Id, &session.UserId, &session.SessionKey, &session.CreatedAt, &session.CreatedAt)
+	err = row.Scan(&session.Id, &session.UserId, &session.SessionKey, &session.CreatedAt, &session.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrSessionNotFound
 	}
@@ -68,16 +70,29 @@ func (s *sessionRepository) FindByKey(sessionKey string) (session *SessionEntity
 	return session, nil
 }
 
+func (s *sessionRepository) UpdateKey(oldKey, newKey string) error {
+	_, err := s.db.Exec(
+		`UPDATE sessions
+				SET session_key=$2,
+					expires_at=NOW() + (expires_at - created_at),
+				    created_at=NOW()
+				WHERE session_key=$1`,
+		oldKey,
+		newKey,
+	)
+
+	return err
+}
+
 func (s *sessionRepository) Create(session *SessionEntity) (err error) {
 	defer func() { err = wrapErr(err) }()
 
 	_, err = s.db.Exec(
-		`INSERT INTO sessions (user_id, session_key, created_at, expires_at)
-				VALUES ($1, $2, $3, $4)`,
+		`INSERT INTO sessions (user_id, session_key, expires_at)
+				VALUES ($1, $2, $3)`,
 		session.UserId,
 		session.SessionKey,
-		session.CreatedAt,
-		session.ExpiresAt,
+		session.ExpiresAt.Time,
 	)
 
 	return err

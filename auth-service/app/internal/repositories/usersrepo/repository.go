@@ -3,6 +3,7 @@ package usersrepo
 import (
 	"database/sql"
 	"errors"
+
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/e"
 )
 
