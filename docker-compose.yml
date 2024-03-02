@@ -38,7 +38,7 @@ services:
       DB_USERNAME: postgres
       DB_NAME: auth-db
       DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      SESSION_EXPIRATION_TIME_MS: 900000
+      SESSION_EXPIRATION_TIME_MS: 60000
 
     ports:
       - "8001:8001"
