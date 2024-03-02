@@ -2,18 +2,22 @@ package main
 
 import (
 	"context"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/handlers"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/postgres"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/sessionsrepo"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/servers"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/sessionsservice"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/logger"
 )
 
@@ -52,7 +56,25 @@ func run(
 
 	userService := usersservice.NewUsersService(ctx, userRepository, crypt)
 
-	handler := handlers.NewHTTPHandler(userService)
+	sessionsRepository, err := sessionsrepo.NewSessionsRepository(db)
+	if err != nil {
+		return err
+	}
+
+	ttl, err := strconv.Atoi(getenv("SESSION_EXPIRATION_TIME_MS"))
+	if err != nil {
+		return err
+	}
+
+	sessionTTL := time.Duration(ttl) * time.Millisecond
+
+	sessionsService := sessionsservice.NewSessionsService(ctx, sessionTTL, sessionsRepository)
+
+	handler := handlers.NewHTTPHandler(
+		userService,
+		sessionsService,
+		sessionTTL,
+	)
 
 	server := servers.NewHTTPServer(ctx, httpPort, handler.Handler())
 
