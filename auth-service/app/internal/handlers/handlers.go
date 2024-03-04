@@ -3,8 +3,6 @@ package handlers
 import (
 	"errors"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/sessionsservice"
-	"io"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -84,6 +82,11 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 	}
 
 	err := h.userService.VerifyEmail(email, code)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
 	if errors.Is(err, usersservice.ErrMismatchedCodes) {
 		e.WriteError(w, http.StatusUnauthorized, err.Error())
 		return
@@ -99,6 +102,11 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 	}
 
 	user, err := h.userService.FindByEmail(email)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
 	if err != nil {
 		e.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -169,6 +177,11 @@ func (h *HTTPHandler) getUserVerificationCode(w http.ResponseWriter, r *http.Req
 	email := r.PathValue(emailQueryName)
 
 	verificationCode, err := h.userService.GetVerificationCode(email)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
 	if err != nil {
 		e.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -198,16 +211,6 @@ func (h *HTTPHandler) findBySessionKey(sessionKey string) (*usersservice.UserRes
 	}
 
 	return user, sessionKey, nil
-}
-
-func closeReadCloser(r io.ReadCloser) {
-	err := r.Close()
-	if err != nil {
-		slog.Error(
-			"read closer closing error",
-			slog.String("error", err.Error()),
-		)
-	}
 }
 
 func isCookiesAccepted(r *http.Request) bool {
