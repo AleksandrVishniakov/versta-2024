@@ -5,7 +5,7 @@ import (
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 var ErrNoOrders = errors.New("no orders found")
@@ -16,31 +16,31 @@ type OrdersService interface {
 	FindById(id int, userId int) (*orders.OrderDTO, error)
 	FindAll(userId int) ([]*orders.OrderDTO, error)
 
-	MarkAsVerified(id int, userId int) error
-	MarkAsCompleted(id int, userId int) error
+	MarkAsVerified(id int) error
+	MarkAsCompleted(id int) error
 
 	Delete(id int, userId int) error
 }
 
 type ordersService struct {
 	repository ordersrepo.OrdersRepository
-	crypt      *encryptor.Encryptor
+	scrambler  scrambler.Scrambler
 }
 
 func NewOrdersService(
 	repo ordersrepo.OrdersRepository,
-	crypt *encryptor.Encryptor,
+	scrambler scrambler.Scrambler,
 ) OrdersService {
 	return &ordersService{
 		repository: repo,
-		crypt:      crypt,
+		scrambler:  scrambler,
 	}
 }
 
 func (o *ordersService) Create(order *orders.OrderDTO) (int, error) {
 	order.Status = orders.StatusCreated
 
-	entity, err := orders.MapEntityFromDTO(order, o.crypt)
+	entity, err := orders.MapEntityFromDTO(order, o.scrambler)
 	if err != nil {
 		return 0, err
 	}
@@ -66,7 +66,7 @@ func (o *ordersService) FindById(id int, userId int) (*orders.OrderDTO, error) {
 		return nil, err
 	}
 
-	order, err := orders.MapDTOFromEntity(entity, o.crypt)
+	order, err := orders.MapDTOFromEntity(entity, o.scrambler)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
 	var userOrders []*orders.OrderDTO
 
 	for _, e := range entities {
-		order, err := orders.MapDTOFromEntity(e, o.crypt)
+		order, err := orders.MapDTOFromEntity(e, o.scrambler)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +98,8 @@ func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
 	return userOrders, nil
 }
 
-func (o *ordersService) MarkAsVerified(id int, userId int) error {
-	err := o.repository.UpdateStatus(id, userId, byte(orders.StatusVerified))
+func (o *ordersService) MarkAsVerified(id int) error {
+	err := o.repository.UpdateStatus(id, byte(orders.StatusVerified))
 	if err != nil {
 		return err
 	}
@@ -107,8 +107,8 @@ func (o *ordersService) MarkAsVerified(id int, userId int) error {
 	return nil
 }
 
-func (o *ordersService) MarkAsCompleted(id int, userId int) error {
-	err := o.repository.UpdateStatus(id, userId, byte(orders.StatusCompleted))
+func (o *ordersService) MarkAsCompleted(id int) error {
+	err := o.repository.UpdateStatus(id, byte(orders.StatusCompleted))
 	if err != nil {
 		return err
 	}

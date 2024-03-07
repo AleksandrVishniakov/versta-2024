@@ -2,19 +2,24 @@ package main
 
 import (
 	"context"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 const logFileName = "logs/app.log"
@@ -48,10 +53,23 @@ func run(
 		return err
 	}
 
-	ordersEncryptor := encryptor.NewEncryptor([]byte(getenv("ORDERS_CRYPTO_KEY")))
-	ordersService := ordersservice.NewOrdersService(ordersRepo, ordersEncryptor)
+	ordersScrambler := scrambler.NewAES256([]byte(getenv("ORDERS_CRYPTO_KEY")))
+	ordersService := ordersservice.NewOrdersService(ordersRepo, ordersScrambler)
 
-	handler := handlers.NewHTTPHandler(ordersService)
+	authAPIClient := apiclient.NewAPIClient(ctx)
+	authAPI := authapi.NewAuthAPI(ctx, getenv("AUTH_SERVICE_HOST"), authAPIClient)
+
+	emailAPIClient := apiclient.NewAPIClient(ctx)
+	emailAPI := emailapi.NewEmailAPI(ctx, getenv("EMAIL_SERVICE_HOST"), emailAPIClient)
+
+	ttl, err := strconv.Atoi(getenv("SESSION_EXPIRATION_TIME_MS"))
+	if err != nil {
+		return err
+	}
+
+	cookieTTL := time.Duration(ttl) * time.Millisecond
+
+	handler := handlers.NewHTTPHandler(ordersService, authAPI, emailAPI, cookieTTL)
 
 	server := servers.NewHTTPServer(httpPort, handler.Handler())
 

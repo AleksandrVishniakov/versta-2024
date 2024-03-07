@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/encryptor"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 type OrderDTO struct {
@@ -23,8 +23,8 @@ func (o *OrderDTO) Valid() (bool, error) {
 	return true, nil
 }
 
-func MapEntityFromDTO(order *OrderDTO, crypt *encryptor.Encryptor) (*ordersrepo.OrderEntity, error) {
-	encryptedInfo, err := crypt.Encrypt([]byte(order.ExtraInformation))
+func MapEntityFromDTO(order *OrderDTO, encryptor scrambler.Encryptor) (*ordersrepo.OrderEntity, error) {
+	encryptedInfo, err := encryptor.Encrypt([]byte(order.ExtraInformation))
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func MapEntityFromDTO(order *OrderDTO, crypt *encryptor.Encryptor) (*ordersrepo.
 	}, nil
 }
 
-func MapDTOFromEntity(entity *ordersrepo.OrderEntity, crypt *encryptor.Encryptor) (*OrderDTO, error) {
-	decryptedInfo, err := crypt.Decrypt([]byte(entity.ExtraInformation.String))
+func MapDTOFromEntity(entity *ordersrepo.OrderEntity, decryptor scrambler.Decryptor) (*OrderDTO, error) {
+	decryptedInfo, err := decryptor.Decrypt([]byte(entity.ExtraInformation.String))
 	if err != nil {
 		return nil, err
 	}

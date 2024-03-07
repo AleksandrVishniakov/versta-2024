@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/api/emailapi"
 	"io"
 	"log"
 	"log/slog"
@@ -49,12 +50,19 @@ func run(
 		return err
 	}
 
+	emailAPI := emailapi.NewEmailAPI(ctx, getenv("EMAIL_SERVICE_HOST"))
+
 	userRepository, err := usersrepo.NewUsersRepository(db)
 	if err != nil {
 		return err
 	}
 
-	userService := usersservice.NewUsersService(ctx, userRepository, crypt)
+	userService := usersservice.NewUsersService(
+		ctx,
+		userRepository,
+		emailAPI,
+		crypt,
+	)
 
 	sessionsRepository, err := sessionsrepo.NewSessionsRepository(db)
 	if err != nil {

@@ -1,4 +1,4 @@
-package encryptor
+package scrambler
 
 import (
 	"bytes"
@@ -10,15 +10,28 @@ import (
 	"io"
 )
 
-type Encryptor struct {
+type Scrambler interface {
+	Decryptor
+	Encryptor
+}
+
+type Decryptor interface {
+	Decrypt([]byte) ([]byte, error)
+}
+
+type Encryptor interface {
+	Encrypt([]byte) ([]byte, error)
+}
+
+type AES256 struct {
 	key []byte
 }
 
-func NewEncryptor(key []byte) *Encryptor {
-	return &Encryptor{key: key}
+func NewAES256(key []byte) *AES256 {
+	return &AES256{key: key}
 }
 
-func (e *Encryptor) Encrypt(data []byte) ([]byte, error) {
+func (e *AES256) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.key)
 	if err != nil {
 		return nil, err
@@ -42,7 +55,7 @@ func (e *Encryptor) Encrypt(data []byte) ([]byte, error) {
 	return []byte(str), nil
 }
 
-func (e *Encryptor) Decrypt(encryptedData []byte) ([]byte, error) {
+func (e *AES256) Decrypt(encryptedData []byte) ([]byte, error) {
 	data, err := base64.StdEncoding.DecodeString(string(encryptedData))
 	if err != nil {
 		return nil, err

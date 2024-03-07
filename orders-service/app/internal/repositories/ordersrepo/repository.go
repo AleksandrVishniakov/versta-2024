@@ -17,7 +17,7 @@ type OrdersRepository interface {
 	FindById(id int, userId int) (*OrderEntity, error)
 	FindAll(userId int) ([]*OrderEntity, error)
 
-	UpdateStatus(id int, userId int, status byte) error
+	UpdateStatus(id int, status byte) error
 
 	Delete(id int, userId int) error
 }
@@ -111,13 +111,12 @@ func (o *ordersRepository) FindAll(userId int) (orders []*OrderEntity, err error
 	return orders, nil
 }
 
-func (o *ordersRepository) UpdateStatus(id int, userId int, status byte) error {
+func (o *ordersRepository) UpdateStatus(id int, status byte) error {
 	_, err := o.db.Exec(
 		`UPDATE orders
-				SET status=$3
-				WHERE id=$1 AND user_id=$2`,
+				SET status=$2
+				WHERE id=$1`,
 		id,
-		userId,
 		status,
 	)
 

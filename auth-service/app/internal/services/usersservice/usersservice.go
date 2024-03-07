@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
 
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/api/emailapi"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 )
@@ -18,7 +20,7 @@ var (
 )
 
 type UsersService interface {
-	Register(email string) (int, error)
+	Register(email string, withEmail bool) (int, error)
 
 	VerifyEmail(email string, code string) error
 
@@ -32,33 +34,36 @@ type UsersService interface {
 type usersService struct {
 	ctx             context.Context
 	usersRepository usersrepo.UsersRepository
+	emailAPI        emailapi.API
 	crypt           *encryptor.Encryptor
 }
 
 func NewUsersService(
 	ctx context.Context,
 	usersRepository usersrepo.UsersRepository,
+	emailAPI emailapi.API,
 	crypt *encryptor.Encryptor,
 ) UsersService {
 	return &usersService{
 		ctx:             ctx,
 		usersRepository: usersRepository,
+		emailAPI:        emailAPI,
 		crypt:           crypt,
 	}
 }
 
-func (u *usersService) Register(email string) (int, error) {
+func (u *usersService) Register(email string, withEmail bool) (int, error) {
 	user, err := u.usersRepository.FindByEmail(email)
 
 	if errors.Is(err, usersrepo.ErrUserNotFound) {
-		return u.authNewUser(email)
+		return u.authNewUser(email, withEmail)
 	}
 
 	if err != nil {
 		return 0, err
 	}
 
-	return u.authExistingUser(user)
+	return u.authExistingUser(user, withEmail)
 }
 
 func (u *usersService) VerifyEmail(email string, code string) error {
@@ -149,7 +154,7 @@ func (u *usersService) UpdateName(id int, name string) error {
 	return err
 }
 
-func (u *usersService) authNewUser(email string) (int, error) {
+func (u *usersService) authNewUser(email string, withEmail bool) (int, error) {
 	newUser := &usersrepo.UserEntity{
 		Email:                 email,
 		EmailVerificationCode: sql.NullString{String: newVerificationCode()},
@@ -158,6 +163,10 @@ func (u *usersService) authNewUser(email string) (int, error) {
 	id, err := u.usersRepository.Create(newUser)
 	if err != nil {
 		return 0, err
+	}
+
+	if !withEmail {
+		return id, nil
 	}
 
 	user, err := u.usersRepository.FindByEmail(email)
@@ -173,12 +182,16 @@ func (u *usersService) authNewUser(email string) (int, error) {
 	return id, nil
 }
 
-func (u *usersService) authExistingUser(user *usersrepo.UserEntity) (int, error) {
+func (u *usersService) authExistingUser(user *usersrepo.UserEntity, withEmail bool) (int, error) {
 	newCode := newVerificationCode()
 
 	err := u.usersRepository.UpdateVerificationCode(user.Id, newCode)
 	if err != nil {
 		return 0, err
+	}
+
+	if !withEmail {
+		return user.Id, nil
 	}
 
 	err = u.sendVerificationCode(user.Email, newCode)
@@ -190,8 +203,13 @@ func (u *usersService) authExistingUser(user *usersrepo.UserEntity) (int, error)
 }
 
 func (u *usersService) sendVerificationCode(email string, code string) error {
-	// TODO: implement sending email logic
 	log.Printf("%s verification code: %s\n", email, code)
+
+	err := u.emailAPI.Write(emailContent(email, code))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -219,4 +237,12 @@ func encryptString(crypt *encryptor.Encryptor, str string) (string, error) {
 	}
 
 	return string(encrBytes), nil
+}
+
+func emailContent(email string, code string) *emailapi.EmailDTO {
+	return &emailapi.EmailDTO{
+		To:      email,
+		Subject: fmt.Sprintf("Verification Code [%s]", code),
+		Body:    fmt.Sprintf("Thank you for registration! Your email verification code is:\n%s", code),
+	}
 }

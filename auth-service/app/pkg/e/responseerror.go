@@ -1,6 +1,7 @@
 package e
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,6 +13,10 @@ type ResponseError struct {
 	Code      int       `json:"code"`
 	Message   string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+func (r ResponseError) Error() string {
+	return fmt.Sprintf("reponse error: %d %s", r.Code, r.Message)
 }
 
 func WriteError(w http.ResponseWriter, code int, message string) {

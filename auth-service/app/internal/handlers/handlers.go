@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/sessionsservice"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
@@ -12,9 +13,10 @@ import (
 )
 
 const (
-	codeQueryName       = "code"
-	emailQueryName      = "email"
-	sessionKeyQueryName = "sessionKey"
+	codeQueryName           = "code"
+	emailQueryName          = "email"
+	sessionKeyQueryName     = "session_key"
+	needToSendMailQueryName = "send_email"
 
 	codeLength = 6
 )
@@ -58,8 +60,18 @@ func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
 
 func (h *HTTPHandler) handleAuthentication(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get(emailQueryName)
+	var needToSendEmail = true
+	var err error
 
-	id, err := h.userService.Register(email)
+	if needToSendEmailStr := r.URL.Query().Get(needToSendMailQueryName); needToSendEmailStr != "" {
+		needToSendEmail, err = strconv.ParseBool(needToSendEmailStr)
+		if err != nil {
+			e.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
+	id, err := h.userService.Register(email, needToSendEmail)
 	if err != nil {
 		e.WriteError(w, http.StatusUnauthorized, err.Error())
 		return
