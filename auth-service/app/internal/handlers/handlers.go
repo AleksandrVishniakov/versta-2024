@@ -48,6 +48,7 @@ func (h *HTTPHandler) Handler() http.Handler {
 	mux.HandleFunc("GET /api/{email}/verify", h.handleEmailVerification)
 
 	mux.HandleFunc("GET /api/user", h.getUser)
+	mux.HandleFunc("PUT /api/{email}/name", h.updateName)
 
 	mux.HandleFunc("GET /api/internal/user/{email}/verification_code", h.getUserVerificationCode)
 
@@ -223,6 +224,42 @@ func (h *HTTPHandler) findBySessionKey(sessionKey string) (*usersservice.UserRes
 	}
 
 	return user, sessionKey, nil
+}
+
+func (h *HTTPHandler) updateName(w http.ResponseWriter, r *http.Request) {
+	type nameDTO struct {
+		Name string `json:"name"`
+	}
+
+	email := r.PathValue(emailQueryName)
+
+	userName, err := parser.Decode[nameDTO](r.Body)
+	if err != nil {
+		e.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if len(userName.Name) < 2 {
+		e.WriteError(w, http.StatusBadRequest, "name should contain at least 2 symbols")
+		return
+	}
+
+	user, err := h.userService.FindByEmail(email)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = h.userService.UpdateName(user.Id, userName.Name)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 }
 
 func isCookiesAccepted(r *http.Request) bool {
