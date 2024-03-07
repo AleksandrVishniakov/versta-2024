@@ -11,7 +11,6 @@ import (
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/e"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/parser"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/utils"
 )
@@ -49,12 +48,12 @@ func (h *HTTPHandler) Handler() http.Handler {
 
 	mux.HandleFunc("GET /ping", h.pingHandler)
 
-	mux.HandleFunc("GET /api/orders", h.getAllOrders)
-	mux.HandleFunc("POST /api/order", h.createNewOrder)
-	mux.HandleFunc("GET /api/order/{orderId}", h.getOrder)
-	mux.HandleFunc("DELETE /api/order/{orderId}", h.deleteOrder)
-	mux.HandleFunc("GET /api/order/{orderId}/verify", h.verifyOrder)
-	mux.HandleFunc("GET /api/order/{orderId}/complete", h.completeOrder)
+	mux.Handle("GET /api/orders", Errors(h.getAllOrders))
+	mux.Handle("POST /api/order", Errors(h.createNewOrder))
+	mux.Handle("GET /api/order/{orderId}", Errors(h.getOrder))
+	mux.Handle("DELETE /api/order/{orderId}", Errors(h.deleteOrder))
+	mux.Handle("GET /api/order/{orderId}/verify", Errors(h.verifyOrder))
+	mux.Handle("GET /api/order/{orderId}/complete", Errors(h.completeOrder))
 
 	return Recovery(Logger(Cookies(mux)))
 }
@@ -63,44 +62,35 @@ func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *HTTPHandler) getAllOrders(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) getAllOrders(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
 	if len(sessionKey) != sessionKeyLength {
-		e.WriteError(w, http.StatusUnauthorized, "invalid session key")
-		return
+		return http.StatusUnauthorized, errors.New("invalid session key")
 	}
 
 	user, sessionKey, err := h.authAPI.FindBySessionKey(sessionKey)
 	if err != nil {
-		var responseError *e.ResponseError
-		switch {
-		case errors.As(err, &responseError):
-			e.WriteError(w, responseError.Code, responseError.Message)
-			return
-		default:
-			e.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		return http.StatusUnauthorized, err
 	}
 
 	userOrders, err := h.ordersService.FindAll(user.Id)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	err = parser.EncodeResponse(w, userOrders, http.StatusOK)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
+
+	return 0, nil
 }
 
-func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
 
@@ -108,35 +98,19 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
 
 	var userId int
 	var err error
-	var isNewUser bool = false
+	var isNewUser = false
 
 	if len(sessionKey) != sessionKeyLength {
 		userId, err = h.authAPI.Create(email, false)
 		if err != nil {
-			var responseError *e.ResponseError
-			switch {
-			case errors.As(err, &responseError):
-				e.WriteError(w, responseError.Code, responseError.Message)
-				return
-			default:
-				e.WriteError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			return http.StatusInternalServerError, err
 		}
 
 		isNewUser = true
 	} else {
 		user, sessionKey, err := h.authAPI.FindBySessionKey(sessionKey)
 		if err != nil {
-			var responseError *e.ResponseError
-			switch {
-			case errors.As(err, &responseError):
-				e.WriteError(w, responseError.Code, responseError.Message)
-				return
-			default:
-				e.WriteError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			return http.StatusInternalServerError, err
 		}
 
 		userId = user.Id
@@ -150,15 +124,7 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
 	if isNewUser {
 		verificationCode, err := h.authAPI.GetVerificationCode(email)
 		if err != nil {
-			var responseError *e.ResponseError
-			switch {
-			case errors.As(err, &responseError):
-				e.WriteError(w, responseError.Code, responseError.Message)
-				return
-			default:
-				e.WriteError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			return http.StatusInternalServerError, err
 		}
 
 		emailVerificationCode = verificationCode.VerificationCode
@@ -166,8 +132,7 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := parser.DecodeValid[*orders.OrderDTO](r.Body)
 	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return http.StatusBadRequest, err
 	}
 
 	order.UserId = userId
@@ -175,8 +140,7 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
 
 	orderId, err := h.ordersService.Create(order)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	err = h.emailAPI.Write(emailContent(
@@ -188,62 +152,46 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) {
 	))
 
 	if err != nil {
-		var responseError *e.ResponseError
-		switch {
-		case errors.As(err, &responseError):
-			e.WriteError(w, responseError.Code, responseError.Message)
-			return
-		default:
-			e.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		return http.StatusInternalServerError, err
 	}
+
+	return 0, nil
 }
 
-func (h *HTTPHandler) getOrder(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) getOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
 	if len(sessionKey) != sessionKeyLength {
-		e.WriteError(w, http.StatusUnauthorized, "invalid session key")
-		return
+		return http.StatusUnauthorized, errors.New("invalid session key")
 	}
 
 	user, sessionKey, err := h.authAPI.FindBySessionKey(sessionKey)
 	if err != nil {
-		var responseError *e.ResponseError
-		switch {
-		case errors.As(err, &responseError):
-			e.WriteError(w, responseError.Code, responseError.Message)
-			return
-		default:
-			e.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		return http.StatusInternalServerError, err
 	}
 
 	orderId, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return http.StatusBadRequest, err
 	}
 
 	order, err := h.ordersService.FindById(orderId, user.Id)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	err = parser.EncodeResponse(w, order, http.StatusOK)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
+
+	return 0, nil
 }
 
-func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	if verificationCode := r.URL.Query().Get(verificationCodeQueryName); verificationCode != "" {
@@ -251,15 +199,7 @@ func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) {
 
 		sessionKey, err := h.authAPI.VerifyEmail(email, verificationCode)
 		if err != nil {
-			var responseError *e.ResponseError
-			switch {
-			case errors.As(err, &responseError):
-				e.WriteError(w, responseError.Code, responseError.Message)
-				return
-			default:
-				e.WriteError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			return http.StatusInternalServerError, err
 		}
 
 		http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
@@ -267,68 +207,59 @@ func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return http.StatusBadRequest, err
 	}
 
 	err = h.ordersService.MarkAsVerified(id)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
+
+	return 0, nil
 }
 
-func (h *HTTPHandler) completeOrder(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) completeOrder(_ http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	id, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return http.StatusBadRequest, err
 	}
 
 	err = h.ordersService.MarkAsCompleted(id)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
+
+	return 0, nil
 }
 
-func (h *HTTPHandler) deleteOrder(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) deleteOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
 	if len(sessionKey) != sessionKeyLength {
-		e.WriteError(w, http.StatusUnauthorized, "invalid session key")
-		return
+		return http.StatusUnauthorized, errors.New("invalid session key")
 	}
 
 	user, sessionKey, err := h.authAPI.FindBySessionKey(sessionKey)
 	if err != nil {
-		var responseError *e.ResponseError
-		switch {
-		case errors.As(err, &responseError):
-			e.WriteError(w, responseError.Code, responseError.Message)
-			return
-		default:
-			e.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		return http.StatusInternalServerError, err
 	}
 
 	orderId, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return http.StatusBadRequest, err
 	}
 
 	err = h.ordersService.Delete(orderId, user.Id)
 	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
+
+	return 0, nil
 }
 
 func sessionCookie(sessionKey string, ttl time.Duration) *http.Cookie {
