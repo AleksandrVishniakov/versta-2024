@@ -2,10 +2,16 @@ import {Button, Checkbox, FormControlLabel, TextField} from "@mui/material";
 import React, {ChangeEvent, useState} from "react";
 import "./FormSection.css"
 import EmailInput from "./Inputs/EmailInput";
+import OrdersAPI from "../../api/OrdersAPI/OrdersAPI";
 
-const FormSection: React.FC = (props) => {
+interface FormSectionProps {
+    ordersAPI: OrdersAPI
+    handleError: (message: string) => void
+}
+
+const FormSection: React.FC<FormSectionProps> = (props) => {
+    const [isDataSubmitting, setDataSubmitting] = useState(false)
     const [emailInputValue, setEmailInputValue] = useState("")
-    const [nameInputValue, setNameInputValue] = useState("")
     const [informationInputValue, setInformationInputValue] = useState("")
     const [isConfirmationCheckboxChecked, setConfirmationCheckboxState] = useState(true)
 
@@ -17,28 +23,39 @@ const FormSection: React.FC = (props) => {
         setState(!curState)
     }
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (isDataSubmitting) return
+
+        setDataSubmitting(true)
+
+        try {
+            await props.ordersAPI.newOrder(emailInputValue, {
+                extraInformation: informationInputValue,
+            })
+        } catch (e: any) {
+            props.handleError(e.toString())
+        } finally {
+            setDataSubmitting(false)
+        }
+    }
+
     return (
         <section className="form-section">
             <h2>Оставить заявку</h2>
             <p>После получения заявки, мы свяжемся с Вами для подтверждения по email</p>
 
-            <form>
+            <form
+                onSubmit={handleSubmit}
+                className={
+                    isDataSubmitting ? "submitting" : ""
+                }
+            >
                 <EmailInput
                     value={emailInputValue}
                     onChange={(value: string) => {
                         handleInputChange(value, setEmailInputValue)
                     }}
-                />
-                <TextField
-                    id="name-input"
-                    name="name-input"
-                    label="Имя"
-                    variant="outlined"
-                    value={nameInputValue}
-                    onChange={(evt: ChangeEvent<HTMLInputElement>) => {
-                        handleInputChange(evt.target.value, setNameInputValue)
-                    }}
-                    fullWidth
                 />
                 <TextField
                     id="info-input"

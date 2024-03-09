@@ -11,6 +11,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+form.submitting {
+  opacity: 0.5;
+}
+
 button:hover,
 a:hover {
   cursor: pointer;
