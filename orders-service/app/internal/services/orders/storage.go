@@ -1,20 +1,21 @@
-package ordersservice
+package orders
 
 import (
 	"errors"
 
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 var ErrNoOrders = errors.New("no orders found")
 
-type OrdersService interface {
-	Create(order *orders.OrderDTO) (int, error)
+type Storage interface {
+	Create(order *OrderDTO, verificationCode string) (int, error)
 
-	FindById(id int, userId int) (*orders.OrderDTO, error)
-	FindAll(userId int) ([]*orders.OrderDTO, error)
+	FindById(id int, userId int) (*OrderDTO, error)
+	FindAll(userId int) ([]*OrderDTO, error)
+
+	GetVerificationCode(id int, userId int) (string, error)
 
 	MarkAsVerified(id int) error
 	MarkAsCompleted(id int) error
@@ -22,25 +23,25 @@ type OrdersService interface {
 	Delete(id int, userId int) error
 }
 
-type ordersService struct {
+type storage struct {
 	repository ordersrepo.OrdersRepository
 	scrambler  scrambler.Scrambler
 }
 
-func NewOrdersService(
+func NewOrdersStorage(
 	repo ordersrepo.OrdersRepository,
 	scrambler scrambler.Scrambler,
-) OrdersService {
-	return &ordersService{
+) Storage {
+	return &storage{
 		repository: repo,
 		scrambler:  scrambler,
 	}
 }
 
-func (o *ordersService) Create(order *orders.OrderDTO) (int, error) {
-	order.Status = orders.StatusCreated
+func (o *storage) Create(order *OrderDTO, verificationCode string) (int, error) {
+	order.Status = StatusCreated
 
-	entity, err := orders.MapEntityFromDTO(order, o.scrambler)
+	entity, err := MapEntityFromDTO(order, verificationCode, o.scrambler)
 	if err != nil {
 		return 0, err
 	}
@@ -56,7 +57,7 @@ func (o *ordersService) Create(order *orders.OrderDTO) (int, error) {
 	return id, err
 }
 
-func (o *ordersService) FindById(id int, userId int) (*orders.OrderDTO, error) {
+func (o *storage) FindById(id int, userId int) (*OrderDTO, error) {
 	entity, err := o.repository.FindById(id, userId)
 	if errors.Is(err, ordersrepo.ErrNoOrders) {
 		return nil, ErrNoOrders
@@ -66,7 +67,7 @@ func (o *ordersService) FindById(id int, userId int) (*orders.OrderDTO, error) {
 		return nil, err
 	}
 
-	order, err := orders.MapDTOFromEntity(entity, o.scrambler)
+	order, err := MapDTOFromEntity(entity, o.scrambler)
 	if err != nil {
 		return nil, err
 	}
@@ -74,16 +75,16 @@ func (o *ordersService) FindById(id int, userId int) (*orders.OrderDTO, error) {
 	return order, nil
 }
 
-func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
+func (o *storage) FindAll(userId int) ([]*OrderDTO, error) {
 	entities, err := o.repository.FindAll(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var userOrders []*orders.OrderDTO
+	var userOrders []*OrderDTO
 
 	for _, e := range entities {
-		order, err := orders.MapDTOFromEntity(e, o.scrambler)
+		order, err := MapDTOFromEntity(e, o.scrambler)
 		if err != nil {
 			return nil, err
 		}
@@ -92,14 +93,27 @@ func (o *ordersService) FindAll(userId int) ([]*orders.OrderDTO, error) {
 	}
 
 	if len(userOrders) == 0 {
-		return []*orders.OrderDTO{}, nil
+		return []*OrderDTO{}, nil
 	}
 
 	return userOrders, nil
 }
 
-func (o *ordersService) MarkAsVerified(id int) error {
-	err := o.repository.UpdateStatus(id, byte(orders.StatusVerified))
+func (o *storage) GetVerificationCode(id int, userId int) (string, error) {
+	entity, err := o.repository.FindById(id, userId)
+	if errors.Is(err, ordersrepo.ErrNoOrders) {
+		return "", ErrNoOrders
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return entity.VerificationCode.String, nil
+}
+
+func (o *storage) MarkAsVerified(id int) error {
+	err := o.repository.UpdateStatus(id, byte(StatusVerified))
 	if err != nil {
 		return err
 	}
@@ -107,8 +121,8 @@ func (o *ordersService) MarkAsVerified(id int) error {
 	return nil
 }
 
-func (o *ordersService) MarkAsCompleted(id int) error {
-	err := o.repository.UpdateStatus(id, byte(orders.StatusCompleted))
+func (o *storage) MarkAsCompleted(id int) error {
+	err := o.repository.UpdateStatus(id, byte(StatusCompleted))
 	if err != nil {
 		return err
 	}
@@ -116,7 +130,7 @@ func (o *ordersService) MarkAsCompleted(id int) error {
 	return nil
 }
 
-func (o *ordersService) Delete(id int, userId int) error {
+func (o *storage) Delete(id int, userId int) error {
 	err := o.repository.Delete(id, userId)
 	if err != nil {
 		return err

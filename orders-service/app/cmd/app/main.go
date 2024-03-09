@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
 	"io"
 	"log"
 	"log/slog"
@@ -13,11 +10,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/ordersservice"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
+	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
 	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
@@ -54,7 +54,7 @@ func run(
 	}
 
 	ordersScrambler := scrambler.NewAES256([]byte(getenv("ORDERS_CRYPTO_KEY")))
-	ordersService := ordersservice.NewOrdersService(ordersRepo, ordersScrambler)
+	ordersStorage := orders.NewOrdersStorage(ordersRepo, ordersScrambler)
 
 	authAPIClient := apiclient.NewAPIClient(ctx)
 	authAPI := authapi.NewAuthAPI(ctx, getenv("AUTH_SERVICE_HOST"), authAPIClient)
@@ -69,7 +69,14 @@ func run(
 
 	cookieTTL := time.Duration(ttl) * time.Millisecond
 
-	handler := handlers.NewHTTPHandler(ordersService, authAPI, emailAPI, cookieTTL)
+	ordersService := orders.NewOrdersService(
+		ctx,
+		ordersStorage,
+		authAPI,
+		emailAPI,
+	)
+
+	handler := handlers.NewHTTPHandler(ordersService, cookieTTL)
 
 	server := servers.NewHTTPServer(httpPort, handler.Handler())
 

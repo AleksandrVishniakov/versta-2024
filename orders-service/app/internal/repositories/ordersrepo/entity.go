@@ -7,4 +7,5 @@ type OrderEntity struct {
 	UserId           int
 	ExtraInformation sql.NullString
 	Status           byte
+	VerificationCode sql.NullString
 }

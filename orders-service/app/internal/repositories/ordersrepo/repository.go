@@ -39,12 +39,13 @@ func (o *ordersRepository) Create(order *OrderEntity) (id int, err error) {
 	defer func() { err = wrapErr(err) }()
 
 	row := o.db.QueryRow(
-		`INSERT INTO orders (user_id, extra_information, status)
-				VALUES($1, $2, $3)
+		`INSERT INTO orders (user_id, extra_information, status, verification_code)
+				VALUES($1, $2, $3, $4)
 				RETURNING id`,
 		order.UserId,
 		order.ExtraInformation.String,
 		order.Status,
+		order.VerificationCode.String,
 	)
 
 	id = 0
@@ -69,7 +70,7 @@ func (o *ordersRepository) FindById(id int, userId int) (order *OrderEntity, err
 
 	order = &OrderEntity{}
 
-	err = row.Scan(&order.Id, &order.UserId, &order.ExtraInformation, &order.Status)
+	err = row.Scan(&order.Id, &order.UserId, &order.ExtraInformation, &order.Status, &order.VerificationCode)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoOrders
 	}
@@ -100,7 +101,7 @@ func (o *ordersRepository) FindAll(userId int) (orders []*OrderEntity, err error
 	for rows.Next() {
 		var order = &OrderEntity{}
 
-		err = rows.Scan(&order.Id, &order.UserId, &order.ExtraInformation, &order.Status)
+		err = rows.Scan(&order.Id, &order.UserId, &order.ExtraInformation, &order.Status, &order.VerificationCode)
 		if err != nil {
 			return nil, err
 		}

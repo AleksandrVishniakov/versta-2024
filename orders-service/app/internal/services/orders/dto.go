@@ -23,7 +23,7 @@ func (o *OrderDTO) Valid() (bool, error) {
 	return true, nil
 }
 
-func MapEntityFromDTO(order *OrderDTO, encryptor scrambler.Encryptor) (*ordersrepo.OrderEntity, error) {
+func MapEntityFromDTO(order *OrderDTO, verificationCode string, encryptor scrambler.Encryptor) (*ordersrepo.OrderEntity, error) {
 	encryptedInfo, err := encryptor.Encrypt([]byte(order.ExtraInformation))
 	if err != nil {
 		return nil, err
@@ -34,6 +34,7 @@ func MapEntityFromDTO(order *OrderDTO, encryptor scrambler.Encryptor) (*ordersre
 		UserId:           order.UserId,
 		ExtraInformation: sql.NullString{String: string(encryptedInfo)},
 		Status:           byte(order.Status),
+		VerificationCode: sql.NullString{String: verificationCode},
 	}, nil
 }
 

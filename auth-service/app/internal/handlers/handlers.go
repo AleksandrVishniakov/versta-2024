@@ -52,7 +52,7 @@ func (h *HTTPHandler) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/internal/user/{email}/verification_code", h.getUserVerificationCode)
 
-	return Recovery(Logger(Cookies(mux)))
+	return Recovery(Logger(CORS(Cookies(mux))))
 }
 
 func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
