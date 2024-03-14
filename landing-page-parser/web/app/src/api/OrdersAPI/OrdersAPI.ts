@@ -29,7 +29,7 @@ class OrdersAPI {
             this.host + "/api/order?email="+email, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
                 body: JSON.stringify(order),
                 credentials: "include"
@@ -51,7 +51,7 @@ class OrdersAPI {
             url, {
                 method: "GET",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
                 credentials: "include"
             }
@@ -76,7 +76,7 @@ class OrdersAPI {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken")
+                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken"),
                 },
                 credentials: "include"
             }
@@ -105,7 +105,7 @@ class OrdersAPI {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken")
+                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken"),
                 },
                 credentials: "include"
             }

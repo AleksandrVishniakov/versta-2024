@@ -74,7 +74,7 @@ services:
     environment:
       HTTP_PORT: 80
       LOG_LEVEL: PRODUCTION
-      ORDERS_SERVICE_HOST: ""
+      ORDERS_SERVICE_HOST: http://orders-service:8000
     ports:
       - "80:80"
     volumes:

@@ -17,6 +17,10 @@ const ordersAPI = new OrdersAPI(
     authAPI,
 )
 
+const appHostField = document.querySelector("#app-host") as HTMLInputElement
+
+console.log(appHostField?.value)
+
 root.render(
     <React.StrictMode>
         <App

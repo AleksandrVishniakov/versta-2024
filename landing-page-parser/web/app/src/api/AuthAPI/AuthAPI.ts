@@ -27,7 +27,7 @@ class AuthAPI {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken")
+                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken"),
                 },
                 credentials: "include"
             }
@@ -59,7 +59,7 @@ class AuthAPI {
                 }),
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken")
+                    "Authorization": "Bearer " + window.sessionStorage.getItem("accessToken"),
                 },
                 credentials: "include"
             }
