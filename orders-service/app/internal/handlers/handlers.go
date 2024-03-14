@@ -3,49 +3,55 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/jwttokens"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/parser"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/utils"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/services/orders"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/parser"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/utils"
 )
 
 const (
-	sessionKeyLength          = 32
 	emailQueryName            = "email"
 	verificationCodeQueryName = "code"
 )
 
 type HTTPHandler struct {
-	ordersService orders.Service
-	cookieTTL     time.Duration
+	ordersService   orders.Service
+	tokensManager   jwttokens.Manager
+	refreshTokenTTL time.Duration
 }
 
 func NewHTTPHandler(
 	ordersService orders.Service,
-	cookieTTL time.Duration,
+	tokensManager jwttokens.Manager,
+	refreshTokenTTL time.Duration,
 ) *HTTPHandler {
 	return &HTTPHandler{
-		ordersService: ordersService,
-		cookieTTL:     cookieTTL,
+		ordersService:   ordersService,
+		tokensManager:   tokensManager,
+		refreshTokenTTL: refreshTokenTTL,
 	}
 }
 
 func (h *HTTPHandler) Handler() http.Handler {
 	var mux = http.NewServeMux()
 
+	jwtAuth := NewJWTAuthMiddleware(h.tokensManager)
+
 	mux.HandleFunc("GET /ping", h.pingHandler)
 
-	mux.Handle("GET /api/orders", Errors(h.getAllOrders))
+	mux.Handle("GET /api/orders", jwtAuth(Errors(h.getAllOrders)))
 	mux.Handle("POST /api/order", Errors(h.createNewOrder))
-	mux.Handle("GET /api/order/{orderId}", Errors(h.getOrder))
-	mux.Handle("DELETE /api/order/{orderId}", Errors(h.deleteOrder))
+	mux.Handle("GET /api/order/{orderId}", jwtAuth(Errors(h.getOrder)))
+	mux.Handle("DELETE /api/order/{orderId}", jwtAuth(Errors(h.deleteOrder)))
 	mux.Handle("GET /api/order/{orderId}/verify", Errors(h.verifyOrder))
+
 	mux.Handle("GET /api/order/{orderId}/complete", Errors(h.completeOrder))
 
-	return Recovery(Logger(CORS(Cookies(mux))))
+	return Recovery(Logger(CORS(mux)))
 }
 
 func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
@@ -55,20 +61,15 @@ func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
 func (h *HTTPHandler) getAllOrders(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
-	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
-	if len(sessionKey) != sessionKeyLength {
-		return http.StatusUnauthorized, errors.New("invalid session key")
-	}
+	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
 
-	userOrders, sessionKey, err := h.ordersService.FindAll(sessionKey)
+	userOrders, err := h.ordersService.FindAll(email)
 	if errors.Is(err, orders.ErrWithAuthorization) {
 		return http.StatusUnauthorized, err
 	}
 	if err != nil {
 		return http.StatusInternalServerError, nil
 	}
-
-	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
 
 	err = parser.EncodeResponse(w, userOrders, http.StatusOK)
 	if err != nil {
@@ -80,7 +81,6 @@ func (h *HTTPHandler) getAllOrders(w http.ResponseWriter, r *http.Request) (int,
 
 func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
-	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
 
 	email := r.URL.Query().Get(emailQueryName)
 	if email == "" {
@@ -96,16 +96,12 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) (in
 		return http.StatusBadRequest, err
 	}
 
-	orderId, sessionKey, err := h.ordersService.Create(sessionKey, email, orderReq.ExtraInformation)
+	orderId, err := h.ordersService.Create(email, orderReq.ExtraInformation)
 	if errors.Is(err, orders.ErrWithAuthorization) {
 		return http.StatusUnauthorized, err
 	}
 	if err != nil {
 		return http.StatusInternalServerError, nil
-	}
-
-	if sessionKey != "" {
-		http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
 	}
 
 	err = parser.EncodeResponse(w, orderId, http.StatusOK)
@@ -119,17 +115,14 @@ func (h *HTTPHandler) createNewOrder(w http.ResponseWriter, r *http.Request) (in
 func (h *HTTPHandler) getOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
-	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
-	if len(sessionKey) != sessionKeyLength {
-		return http.StatusUnauthorized, errors.New("invalid session key")
-	}
+	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
 
 	orderId, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
-	order, sessionKey, err := h.ordersService.FindById(sessionKey, orderId)
+	order, err := h.ordersService.FindById(email, orderId)
 	if errors.Is(err, orders.ErrWithAuthorization) {
 		return http.StatusUnauthorized, err
 	}
@@ -139,8 +132,6 @@ func (h *HTTPHandler) getOrder(w http.ResponseWriter, r *http.Request) (int, err
 	if err != nil {
 		return http.StatusInternalServerError, nil
 	}
-
-	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
 
 	err = parser.EncodeResponse(w, order, http.StatusOK)
 	if err != nil {
@@ -168,7 +159,7 @@ func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusBadRequest, errors.New("invalid verification code length")
 	}
 
-	sessionKey, err := h.ordersService.Verify(email, orderId, code)
+	accessToken, refreshToken, err := h.ordersService.Verify(email, orderId, code)
 	if errors.Is(err, orders.ErrWithAuthorization) {
 		return http.StatusUnauthorized, err
 	}
@@ -182,7 +173,16 @@ func (h *HTTPHandler) verifyOrder(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusInternalServerError, err
 	}
 
-	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
+	if refreshToken != "" {
+		http.SetCookie(w, refreshTokenCookie(refreshToken, h.refreshTokenTTL))
+	}
+
+	if accessToken != "" {
+		err := parser.EncodeResponse(w, accessToken, http.StatusOK)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+	}
 
 	return 0, nil
 }
@@ -209,17 +209,14 @@ func (h *HTTPHandler) completeOrder(_ http.ResponseWriter, r *http.Request) (int
 func (h *HTTPHandler) deleteOrder(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
-	sessionKey := fmt.Sprintf("%v", r.Context().Value(SessionKey))
-	if len(sessionKey) != sessionKeyLength {
-		return http.StatusUnauthorized, errors.New("invalid session key")
-	}
+	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
 
 	orderId, err := strconv.Atoi(r.PathValue("orderId"))
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
-	sessionKey, err = h.ordersService.Delete(sessionKey, orderId)
+	err = h.ordersService.Delete(email, orderId)
 	if errors.Is(err, orders.ErrWithAuthorization) {
 		return http.StatusUnauthorized, err
 	}
@@ -230,18 +227,16 @@ func (h *HTTPHandler) deleteOrder(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusInternalServerError, nil
 	}
 
-	http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
-
 	return 0, nil
 }
 
-func sessionCookie(sessionKey string, ttl time.Duration) *http.Cookie {
+func refreshTokenCookie(token string, ttl time.Duration) *http.Cookie {
 	return &http.Cookie{
-		Name:     "sessionKey",
-		Value:    sessionKey,
+		Name:     RefreshTokenCookieKey,
+		Value:    token,
 		Expires:  time.Now().Add(ttl),
 		MaxAge:   int(ttl.Seconds()),
-		Secure:   true,
+		Path:     "/",
 		HttpOnly: true,
 	}
 }

@@ -2,7 +2,7 @@ package parser
 
 import (
 	"encoding/json"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/validator"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/validator"
 	"io"
 	"net/http"
 )

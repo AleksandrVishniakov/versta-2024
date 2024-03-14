@@ -1,13 +1,15 @@
 import {InputAdornment, TextField } from "@mui/material";
-import React, {ChangeEvent, useState } from "react";
+import React, {ChangeEvent, useEffect, useState} from "react";
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
 
 interface EmailInputProps {
     label?: string
+    className?: string
     name?: string
     id?: string
     value?: string
     onChange?: (email: string) => void
+    disabled?: boolean
 }
 const EmailInput: React.FC<EmailInputProps> = (props) => {
     const [value, setValue] = useState(props.value ? props.value : "")
@@ -19,6 +21,12 @@ const EmailInput: React.FC<EmailInputProps> = (props) => {
             props.onChange(evt.target.value)
         }
     }
+
+    useEffect(() => {
+        if (!props.value) return
+
+        setValue(props.value)
+    }, [props.value]);
     
     return (
         <TextField
@@ -37,6 +45,8 @@ const EmailInput: React.FC<EmailInputProps> = (props) => {
             fullWidth
             value={value}
             onChange={handleInputValueChange}
+            className={props.className}
+            disabled={props.disabled ? props.disabled : false}
         />
     )
 }

@@ -24,8 +24,9 @@ type UsersService interface {
 
 	VerifyEmail(email string, code string) error
 
-	FindBySessionKey(sessionKey string) (*UserResponseDTO, error)
+	FindById(id int) (*UserResponseDTO, error)
 	FindByEmail(email string) (*UserResponseDTO, error)
+
 	GetVerificationCode(email string) (*VerificationCodeDTO, error)
 
 	UpdateName(id int, name string) error
@@ -95,8 +96,8 @@ func (u *usersService) VerifyEmail(email string, code string) error {
 	return nil
 }
 
-func (u *usersService) FindBySessionKey(sessionKey string) (*UserResponseDTO, error) {
-	entity, err := u.usersRepository.FindBySessionKey(sessionKey)
+func (u *usersService) FindById(id int) (*UserResponseDTO, error) {
+	entity, err := u.usersRepository.FindById(id)
 	if errors.Is(err, usersrepo.ErrUserNotFound) {
 		return nil, ErrUserNotFound
 	}

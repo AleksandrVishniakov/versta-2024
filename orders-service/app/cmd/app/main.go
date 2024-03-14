@@ -10,16 +10,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/handlers"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/servers"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/services/orders"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/logger"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/handlers"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/repositories/postgres"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/servers"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/services/orders"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/jwttokens"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/logger"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 const logFileName = "logs/app.log"
@@ -62,13 +63,6 @@ func run(
 	emailAPIClient := apiclient.NewAPIClient(ctx)
 	emailAPI := emailapi.NewEmailAPI(ctx, getenv("EMAIL_SERVICE_HOST"), emailAPIClient)
 
-	ttl, err := strconv.Atoi(getenv("SESSION_EXPIRATION_TIME_MS"))
-	if err != nil {
-		return err
-	}
-
-	cookieTTL := time.Duration(ttl) * time.Millisecond
-
 	ordersService := orders.NewOrdersService(
 		ctx,
 		ordersStorage,
@@ -76,7 +70,23 @@ func run(
 		emailAPI,
 	)
 
-	handler := handlers.NewHTTPHandler(ordersService, cookieTTL)
+	accessTokenTTL, err := strconv.Atoi(getenv("ACCESS_TOKEN_TTL_MS"))
+	if err != nil {
+		return err
+	}
+
+	refreshTokenTTL, err := strconv.Atoi(getenv("REFRESH_TOKEN_TTL_MS"))
+	if err != nil {
+		return err
+	}
+
+	tokensManager := jwttokens.NewTokensManager(
+		[]byte(getenv("JWT_SIGNATURE_KEY")),
+		time.Duration(accessTokenTTL)*time.Millisecond,
+		time.Duration(refreshTokenTTL)*time.Millisecond,
+	)
+
+	handler := handlers.NewHTTPHandler(ordersService, tokensManager, 12*time.Hour)
 
 	server := servers.NewHTTPServer(httpPort, handler.Handler())
 

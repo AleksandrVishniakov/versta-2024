@@ -3,7 +3,7 @@ package ordersrepo
 import (
 	"database/sql"
 	"errors"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/e"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/e"
 )
 
 var (

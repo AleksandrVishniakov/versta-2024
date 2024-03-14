@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/utils"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/utils"
 	"net/http"
 	"time"
 )

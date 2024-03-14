@@ -1,0 +1,7 @@
+.ProfileScreen {
+    padding: 30px 10%;
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    gap:20px;
+}

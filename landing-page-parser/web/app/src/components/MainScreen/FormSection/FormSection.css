@@ -4,7 +4,7 @@
     align-items: center;
 }
 
-.form-section > form {
+#order-form {
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
@@ -12,13 +12,3 @@
     gap: 20px;
 }
 
-div.form-footer {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    row-gap: 10px;
-    column-gap: 20px;
-    flex-wrap: wrap;
-    width: 100%;
-    align-items: center;
-}

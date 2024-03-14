@@ -1,10 +1,10 @@
 package apiclient
 
 import (
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/parser"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/parser"
 	"net/http"
 
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/e"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/e"
 )
 
 func ScanResponse[T any](resp *http.Response, dest *T) error {

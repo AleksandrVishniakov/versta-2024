@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/api/emailapi"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/jwttokens"
 	"io"
 	"log"
 	"log/slog"
@@ -13,10 +14,8 @@ import (
 
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/handlers"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/postgres"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/sessionsrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/repositories/usersrepo"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/servers"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/sessionsservice"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/encryptor"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/logger"
@@ -64,24 +63,26 @@ func run(
 		crypt,
 	)
 
-	sessionsRepository, err := sessionsrepo.NewSessionsRepository(db)
+	accessTokenTTL, err := strconv.Atoi(getenv("ACCESS_TOKEN_TTL_MS"))
 	if err != nil {
 		return err
 	}
 
-	ttl, err := strconv.Atoi(getenv("SESSION_EXPIRATION_TIME_MS"))
+	refreshTokenTTL, err := strconv.Atoi(getenv("REFRESH_TOKEN_TTL_MS"))
 	if err != nil {
 		return err
 	}
 
-	sessionTTL := time.Duration(ttl) * time.Millisecond
-
-	sessionsService := sessionsservice.NewSessionsService(ctx, sessionTTL, sessionsRepository)
+	tokensManager := jwttokens.NewTokensManager(
+		[]byte(getenv("JWT_SIGNATURE_KEY")),
+		time.Duration(accessTokenTTL)*time.Millisecond,
+		time.Duration(refreshTokenTTL)*time.Millisecond,
+	)
 
 	handler := handlers.NewHTTPHandler(
 		userService,
-		sessionsService,
-		sessionTTL,
+		tokensManager,
+		12*time.Hour,
 	)
 
 	server := servers.NewHTTPServer(ctx, httpPort, handler.Handler())

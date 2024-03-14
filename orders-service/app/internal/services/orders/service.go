@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/e"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/api/emailapi"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/e"
 	"log/slog"
 	"math/rand"
 	"time"
@@ -18,15 +18,15 @@ var (
 )
 
 type Service interface {
-	Create(sessionKey string, email string, extraInformation string) (int, string, error)
+	Create(email string, extraInformation string) (int, error)
 
-	FindAll(sessionKey string) ([]*OrderDTO, string, error)
-	FindById(sessionKey string, orderId int) (*OrderDTO, string, error)
+	FindAll(email string) ([]*OrderDTO, error)
+	FindById(email string, orderId int) (*OrderDTO, error)
 
-	Verify(email string, orderId int, verificationCode string) (string, error)
+	Verify(email string, orderId int, verificationCode string) (accessToken string, refreshToken string, err error)
 	Complete(orderId int) error
 
-	Delete(sessionKey string, orderId int) (string, error)
+	Delete(email string, orderId int) error
 }
 
 type ordersService struct {
@@ -51,17 +51,15 @@ func NewOrdersService(
 }
 
 type userData struct {
-	id          int
-	email       string
-	name        string
-	sessionKey  string
-	withSession bool
+	id    int
+	email string
+	name  string
 }
 
-func (o *ordersService) Create(sessionKey string, email string, extraInformation string) (int, string, error) {
-	user, err := o.authOrCreateUser(sessionKey, email)
+func (o *ordersService) Create(email string, extraInformation string) (int, error) {
+	user, err := o.authOrCreateUser(email)
 	if err != nil {
-		return 0, "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return 0, e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
 	order := &OrderDTO{
@@ -73,7 +71,7 @@ func (o *ordersService) Create(sessionKey string, email string, extraInformation
 
 	orderId, err := o.storage.Create(order, orderVerificationCode)
 	if err != nil {
-		return 0, "", err
+		return 0, err
 	}
 
 	o.sendVerificationMessage(
@@ -84,63 +82,67 @@ func (o *ordersService) Create(sessionKey string, email string, extraInformation
 		orderVerificationCode,
 	)
 
-	return orderId, user.sessionKey, nil
+	return orderId, nil
 }
 
-func (o *ordersService) FindAll(sessionKey string) ([]*OrderDTO, string, error) {
-	user, err := o.authUser(sessionKey)
+func (o *ordersService) FindAll(email string) ([]*OrderDTO, error) {
+	user, err := o.authAPI.FindByEmail(email)
 	if err != nil {
-		return nil, "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return nil, err
 	}
 
-	orders, err := o.storage.FindAll(user.id)
 	if err != nil {
-		return nil, "", err
+		return nil, e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
-	return orders, user.sessionKey, nil
+	orders, err := o.storage.FindAll(user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
-func (o *ordersService) FindById(sessionKey string, orderId int) (*OrderDTO, string, error) {
-	user, err := o.authUser(sessionKey)
+func (o *ordersService) FindById(email string, orderId int) (*OrderDTO, error) {
+	user, err := o.authAPI.FindByEmail(email)
 	if err != nil {
-		return nil, "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return nil, e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
-	order, err := o.storage.FindById(orderId, user.id)
+	order, err := o.storage.FindById(orderId, user.Id)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	return order, user.sessionKey, nil
+	return order, nil
 }
 
-func (o *ordersService) Verify(email string, orderId int, verificationCode string) (string, error) {
+func (o *ordersService) Verify(email string, orderId int, verificationCode string) (string, string, error) {
 	userDTO, err := o.authAPI.FindByEmail(email)
 	if err != nil {
-		return "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return "", "", e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
 	orderVerificationCode, err := o.storage.GetVerificationCode(orderId, userDTO.Id)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if orderVerificationCode != verificationCode {
-		return "", ErrMismatchedCodes
+		return "", "", ErrMismatchedCodes
 	}
 
 	err = o.storage.MarkAsVerified(orderId)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	sessionKey, err := o.verifyUser(email)
+	accessToken, refreshToken, err := o.verifyUser(email)
 	if err != nil {
-		return "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return "", "", e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
-	return sessionKey, nil
+	return accessToken, refreshToken, nil
 }
 
 func (o *ordersService) Complete(orderId int) error {
@@ -152,82 +154,59 @@ func (o *ordersService) Complete(orderId int) error {
 	return nil
 }
 
-func (o *ordersService) Delete(sessionKey string, orderId int) (string, error) {
-	user, err := o.authUser(sessionKey)
+func (o *ordersService) Delete(email string, orderId int) error {
+	user, err := o.authAPI.FindByEmail(email)
 	if err != nil {
-		return "", e.WrapErrWithErr(err, ErrWithAuthorization)
+		return e.WrapErrWithErr(err, ErrWithAuthorization)
 	}
 
-	err = o.storage.Delete(orderId, user.id)
+	err = o.storage.Delete(orderId, user.Id)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return user.sessionKey, nil
+	return nil
 }
 
-func (o *ordersService) authOrCreateUser(sessionKey string, email string) (*userData, error) {
+func (o *ordersService) authOrCreateUser(email string) (*userData, error) {
 	var err error
 	var user = &userData{
-		email:       email,
-		sessionKey:  sessionKey,
-		withSession: sessionKey != "",
+		email: email,
 	}
 
-	if !user.withSession {
-		id, err := o.authAPI.Create(user.email, false)
-		if err != nil {
-			return nil, err
-		}
-
-		userDTO, err := o.authAPI.FindByEmail(email)
-		if err != nil {
-			return nil, err
-		}
-
-		user.id = id
-		user.name = userDTO.Name
-	} else {
-		user, err = o.authUser(sessionKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return user, nil
-}
-
-func (o *ordersService) authUser(sessionKey string) (*userData, error) {
-	var user = &userData{
-		withSession: true,
-		sessionKey:  sessionKey,
-	}
-
-	userDTO, newSessionKey, err := o.authAPI.FindBySessionKey(user.sessionKey)
+	id, err := o.authAPI.Register(user.email, false)
 	if err != nil {
 		return nil, err
 	}
 
-	user.id = userDTO.Id
-	user.email = userDTO.Email
+	userDTO, err := o.authAPI.FindByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+
+	user.id = id
 	user.name = userDTO.Name
-	user.sessionKey = newSessionKey
 
 	return user, nil
 }
 
-func (o *ordersService) verifyUser(email string) (string, error) {
+func (o *ordersService) verifyUser(email string) (string, string, error) {
+	_, err := o.authAPI.Register(email, false)
+	if err != nil {
+		return "", "", err
+	}
+
 	vCode, err := o.authAPI.GetVerificationCode(email)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	sessionKey, err := o.authAPI.VerifyEmail(email, vCode.VerificationCode)
+	accessToken, refreshToken, err := o.authAPI.VerifyEmail(email, vCode.VerificationCode)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return sessionKey, nil
+	return accessToken, refreshToken, nil
 }
 
 func (o *ordersService) sendVerificationMessage(

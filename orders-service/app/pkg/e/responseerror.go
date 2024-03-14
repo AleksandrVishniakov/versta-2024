@@ -2,7 +2,7 @@ package e
 
 import (
 	"fmt"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/parser"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/parser"
 	"log/slog"
 	"net/http"
 	"time"

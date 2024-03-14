@@ -1,0 +1,16 @@
+.LoginScreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    height: 80vh;
+}
+
+#auth-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    width: clamp(150px, 100%, 500px);
+    gap: 20px;
+}

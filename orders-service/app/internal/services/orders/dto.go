@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
-	"github.com/AleksnadrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/repositories/ordersrepo"
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/scrambler"
 )
 
 type OrderDTO struct {

@@ -1,3 +1,7 @@
+#root {
+  width: 100%;
+}
+
 body {
   margin: 0;
   padding: 0 clamp(3px, 5vw, 20px);
@@ -11,7 +15,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-form.submitting {
+.partially-transparent {
   opacity: 0.5;
 }
 

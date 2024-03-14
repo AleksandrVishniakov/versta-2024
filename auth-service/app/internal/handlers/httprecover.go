@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 )
@@ -12,7 +13,7 @@ func Recovery(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 
 				slog.Error("panic recovered",
-					slog.String("error", err.(string)),
+					slog.String("error", fmt.Sprintf("%v", err)),
 
 					slog.Group("request",
 						slog.String("url", r.URL.String()),

@@ -15,8 +15,8 @@ var (
 type UsersRepository interface {
 	Create(user *UserEntity) (int, error)
 
-	FindBySessionKey(sessionKey string) (*UserEntity, error)
 	FindByEmail(email string) (*UserEntity, error)
+	FindById(id int) (*UserEntity, error)
 
 	UpdateName(id int, name string) error
 	UpdateVerificationCode(id int, code string) error
@@ -58,14 +58,13 @@ func (u *usersRepository) Create(user *UserEntity) (id int, err error) {
 	return id, nil
 }
 
-func (u *usersRepository) FindBySessionKey(sessionKey string) (user *UserEntity, err error) {
+func (u *usersRepository) FindByEmail(email string) (user *UserEntity, err error) {
 	defer func() { err = wrapErr(err) }()
 
 	row := u.db.QueryRow(
 		`SELECT u.* FROM users u
-           		JOIN sessions s ON u.id = s.user_id
-				WHERE s.session_key=$1`,
-		sessionKey,
+				WHERE u.email = $1`,
+		email,
 	)
 
 	user = &UserEntity{}
@@ -82,13 +81,13 @@ func (u *usersRepository) FindBySessionKey(sessionKey string) (user *UserEntity,
 	return user, err
 }
 
-func (u *usersRepository) FindByEmail(email string) (user *UserEntity, err error) {
+func (u *usersRepository) FindById(id int) (user *UserEntity, err error) {
 	defer func() { err = wrapErr(err) }()
 
 	row := u.db.QueryRow(
 		`SELECT u.* FROM users u
-				WHERE u.email = $1`,
-		email,
+				WHERE u.id = $1`,
+		id,
 	)
 
 	user = &UserEntity{}

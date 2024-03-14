@@ -18,7 +18,9 @@ services:
       DB_USERNAME: postgres
       DB_NAME: orders-db
       DB_PASSWORD: ${ORDERS_DB_PASSWORD}
-      SESSION_EXPIRATION_TIME_MS: 60000
+      JWT_SIGNATURE_KEY: ${JWT_SIGNATURE_KEY}
+      ACCESS_TOKEN_TTL_MS: 60000 #1 minute
+      REFRESH_TOKEN_TTL_MS: 43200000 #12 hours
 
     ports:
       - "8000:8000"
@@ -41,7 +43,9 @@ services:
       DB_USERNAME: postgres
       DB_NAME: auth-db
       DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      SESSION_EXPIRATION_TIME_MS: 60000
+      ACCESS_TOKEN_TTL_MS: 60000 #1 minute
+      REFRESH_TOKEN_TTL_MS: 43200000 #12 hours
+      JWT_SIGNATURE_KEY: ${JWT_SIGNATURE_KEY}
     ports:
       - "8001:8001"
     volumes:

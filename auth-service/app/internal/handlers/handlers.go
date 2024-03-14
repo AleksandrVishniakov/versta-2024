@@ -2,20 +2,20 @@ package handlers
 
 import (
 	"errors"
-	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/sessionsservice"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/e"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/jwttokens"
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/parser"
 )
 
 const (
 	codeQueryName           = "code"
 	emailQueryName          = "email"
-	sessionKeyQueryName     = "session_key"
 	needToSendMailQueryName = "send_email"
 
 	codeLength = 6
@@ -23,36 +23,42 @@ const (
 
 type HTTPHandler struct {
 	userService     usersservice.UsersService
-	sessionsService sessionsservice.SessionsService
-	cookieTTL       time.Duration
+	tokensManager   jwttokens.Manager
+	refreshTokenTTL time.Duration
 }
 
 func NewHTTPHandler(
 	userService usersservice.UsersService,
-	sessionsService sessionsservice.SessionsService,
+	tokensManager jwttokens.Manager,
 	cookieTTL time.Duration,
 ) *HTTPHandler {
 	return &HTTPHandler{
 		userService:     userService,
-		sessionsService: sessionsService,
-		cookieTTL:       cookieTTL,
+		tokensManager:   tokensManager,
+		refreshTokenTTL: cookieTTL,
 	}
 }
 
 func (h *HTTPHandler) Handler() http.Handler {
+	jwtAuth := NewJWTAuthMiddleware(h.tokensManager)
+
 	var mux = http.NewServeMux()
 
 	mux.HandleFunc("GET /ping", h.pingHandler)
 
 	mux.HandleFunc("GET /api/auth", h.handleAuthentication)
+	mux.HandleFunc("GET /api/tokens/refresh", h.refreshTokens)
 	mux.HandleFunc("GET /api/{email}/verify", h.handleEmailVerification)
 
-	mux.HandleFunc("GET /api/user", h.getUser)
-	mux.HandleFunc("PUT /api/{email}/name", h.updateName)
+	mux.HandleFunc("GET /api/user/email/{email}", h.getUserByEmail)
+
+	mux.Handle("PUT /api/user/name", jwtAuth(http.HandlerFunc(h.updateName)))
+
+	mux.Handle("GET /api/user/my_profile", jwtAuth(http.HandlerFunc(h.getUserByToken)))
 
 	mux.HandleFunc("GET /api/internal/user/{email}/verification_code", h.getUserVerificationCode)
 
-	return Recovery(Logger(CORS(Cookies(mux))))
+	return Recovery(Logger(CORS(mux)))
 }
 
 func (h *HTTPHandler) pingHandler(w http.ResponseWriter, _ *http.Request) {
@@ -110,9 +116,65 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if !isCookiesAccepted(r) {
+	user, err := h.userService.FindByEmail(email)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	tokens, err := h.tokensManager.CreateTokens(user.Id, jwttokens.AccessTokenPayload{
+		UserId: user.Id,
+		Email:  user.Email,
+	})
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.SetCookie(w, getRefreshTokenCookie(tokens.RefreshToken, h.refreshTokenTTL))
+
+	err = parser.EncodeResponse(w, tokens.AccessToken, http.StatusOK)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (h *HTTPHandler) getUserByEmail(w http.ResponseWriter, r *http.Request) {
+	var email = r.PathValue(emailQueryName)
+
+	var user = &usersservice.UserResponseDTO{}
+	var err error
+
+	if email == "" {
+		e.WriteError(w, http.StatusBadRequest, "no email provided")
+		return
+	}
+
+	user, err = h.userService.FindByEmail(email)
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = parser.EncodeResponse(w, user, http.StatusOK)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (h *HTTPHandler) getUserByToken(w http.ResponseWriter, r *http.Request) {
+	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
 
 	user, err := h.userService.FindByEmail(email)
 	if errors.Is(err, usersservice.ErrUserNotFound) {
@@ -122,60 +184,6 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	sessionKey, err := h.sessionsService.Create(user.Id)
-	if err != nil {
-		e.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	cookie := sessionCookie(sessionKey, h.cookieTTL)
-	http.SetCookie(w, cookie)
-}
-
-func (h *HTTPHandler) getUser(w http.ResponseWriter, r *http.Request) {
-	var email = r.URL.Query().Get(emailQueryName)
-	var sessionKey = r.URL.Query().Get(sessionKeyQueryName)
-
-	var user = &usersservice.UserResponseDTO{}
-	var err error
-
-	if email != "" {
-		user, err = h.userService.FindByEmail(email)
-	} else if sessionKey != "" {
-		user, sessionKey, err = h.findBySessionKey(sessionKey)
-		if errors.Is(err, sessionsservice.ErrSessionNotFound) {
-			e.WriteError(w, http.StatusNotFound, err.Error())
-			return
-		}
-
-		if errors.Is(err, sessionsservice.ErrSessionExpired) {
-			e.WriteError(w, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		if err != nil {
-			e.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if isCookiesAccepted(r) {
-			http.SetCookie(w, sessionCookie(sessionKey, h.cookieTTL))
-		}
-	} else {
-		e.WriteError(w, http.StatusBadRequest, "no email or sessionKey parameter provided")
-		return
-	}
-
-	if errors.Is(err, usersservice.ErrUserNotFound) {
-		e.WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	if err != nil {
-		e.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -207,31 +215,12 @@ func (h *HTTPHandler) getUserVerificationCode(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (h *HTTPHandler) findBySessionKey(sessionKey string) (*usersservice.UserResponseDTO, string, error) {
-	err := h.sessionsService.Valid(sessionKey)
-	if err != nil {
-		return nil, "", err
-	}
-
-	sessionKey, err = h.sessionsService.UpdateKey(sessionKey)
-	if err != nil {
-		return nil, "", err
-	}
-
-	user, err := h.userService.FindBySessionKey(sessionKey)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return user, sessionKey, nil
-}
-
 func (h *HTTPHandler) updateName(w http.ResponseWriter, r *http.Request) {
 	type nameDTO struct {
 		Name string `json:"name"`
 	}
 
-	email := r.PathValue(emailQueryName)
+	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
 
 	userName, err := parser.Decode[nameDTO](r.Body)
 	if err != nil {
@@ -262,22 +251,51 @@ func (h *HTTPHandler) updateName(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func isCookiesAccepted(r *http.Request) bool {
-	isAccepted, ok := (r.Context().Value(IsCookieAcceptedKey)).(bool)
-	if !ok {
-		return false
+func (h *HTTPHandler) refreshTokens(w http.ResponseWriter, r *http.Request) {
+	refreshTokenCookie, err := r.Cookie(RefreshTokenCookieKey)
+	if err != nil {
+		e.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	return isAccepted
+	refreshTokenPayload, err := h.tokensManager.ParseRefreshToken(refreshTokenCookie.Value)
+	if err != nil {
+		e.WriteError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	user, err := h.userService.FindById(refreshTokenPayload.UserId)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	tokens, err := h.tokensManager.RefreshTokens(refreshTokenCookie.Value, &jwttokens.AccessTokenPayload{
+		UserId: user.Id,
+		Email:  user.Email,
+	})
+
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.SetCookie(w, getRefreshTokenCookie(tokens.RefreshToken, h.refreshTokenTTL))
+
+	err = parser.EncodeResponse(w, tokens.AccessToken, http.StatusOK)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 }
 
-func sessionCookie(sessionKey string, ttl time.Duration) *http.Cookie {
+func getRefreshTokenCookie(token string, ttl time.Duration) *http.Cookie {
 	return &http.Cookie{
-		Name:     "sessionKey",
-		Value:    sessionKey,
+		Name:     RefreshTokenCookieKey,
+		Value:    token,
 		Expires:  time.Now().Add(ttl),
 		MaxAge:   int(ttl.Seconds()),
-		Secure:   true,
+		Path:     "/",
 		HttpOnly: true,
 	}
 }
