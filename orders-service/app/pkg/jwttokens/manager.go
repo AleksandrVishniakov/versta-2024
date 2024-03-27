@@ -2,8 +2,10 @@ package jwttokens
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt"
 	"time"
+
+	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/internal/api/authapi"
+	"github.com/golang-jwt/jwt"
 )
 
 type JWTokens struct {
@@ -12,8 +14,9 @@ type JWTokens struct {
 }
 
 type AccessTokenPayload struct {
-	UserId int    `json:"userId"`
-	Email  string `json:"email"`
+	UserId int                `json:"userId"`
+	Email  string             `json:"email"`
+	Status authapi.UserStatus `json:"status"`
 }
 
 type RefreshTokenPayload struct {

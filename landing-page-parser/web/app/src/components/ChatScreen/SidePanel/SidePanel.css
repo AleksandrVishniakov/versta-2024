@@ -1,0 +1,78 @@
+.SidePanel {
+    position: relative;
+    height: calc(100% - 10px);
+    padding: 5px clamp(3px, 5%, 10px);
+    min-width: 200px;
+    width: clamp(200px, calc(30vw - 2*clamp(2px, 5%, 10px)), 400px);
+    box-shadow: 2px 0 15px -3px rgba(0,0,0,0.1);
+    color: #939393;
+
+    transition-duration: .3s;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.clients-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.clients-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.clients-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.clients-list::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+.clients-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+@media (max-width: 600px) {
+    .SidePanel {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+    }
+
+    .SidePanel.closed {
+        position: relative;
+        height: inherit;
+    }
+}
+
+.SidePanel.closed {
+    min-width: 0;
+    width: 40px;
+}
+
+.SidePanel-top-bar {
+    width: 100%;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    height: fit-content;
+}
+
+.side-panel-title {
+    flex: 1;
+
+    text-align: center;
+}
+
+.close-btn {
+    z-index: 999;
+}

@@ -21,11 +21,13 @@ var (
 
 type UsersService interface {
 	Register(email string, withEmail bool) (int, error)
+	InitAdmin(email string) error
 
 	VerifyEmail(email string, code string) error
 
 	FindById(id int) (*UserResponseDTO, error)
 	FindByEmail(email string) (*UserResponseDTO, error)
+	FindAdmin() (*UserResponseDTO, error)
 
 	GetVerificationCode(email string) (*VerificationCodeDTO, error)
 
@@ -65,6 +67,29 @@ func (u *usersService) Register(email string, withEmail bool) (int, error) {
 	}
 
 	return u.authExistingUser(user, withEmail)
+}
+
+func (u *usersService) InitAdmin(email string) error {
+	user, err := u.FindAdmin()
+	if err != nil && !errors.Is(err, ErrUserNotFound) {
+		return err
+	}
+
+	if user != nil {
+		return nil
+	}
+
+	_, err = u.usersRepository.Create(&usersrepo.UserEntity{
+		Email:           email,
+		Status:          string(StatusAdmin),
+		IsEmailVerified: true,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *usersService) VerifyEmail(email string, code string) error {
@@ -132,6 +157,24 @@ func (u *usersService) FindByEmail(email string) (*UserResponseDTO, error) {
 	return user, nil
 }
 
+func (u *usersService) FindAdmin() (*UserResponseDTO, error) {
+	entity, err := u.usersRepository.FindAdmin()
+	if errors.Is(err, usersrepo.ErrUserNotFound) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := mapResponseFromEntity(u.crypt, entity)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func (u *usersService) GetVerificationCode(email string) (*VerificationCodeDTO, error) {
 	user, err := u.usersRepository.FindByEmail(email)
 
@@ -158,6 +201,7 @@ func (u *usersService) UpdateName(id int, name string) error {
 func (u *usersService) authNewUser(email string, withEmail bool) (int, error) {
 	newUser := &usersrepo.UserEntity{
 		Email:                 email,
+		Status:                string(StatusUser),
 		EmailVerificationCode: sql.NullString{String: newVerificationCode()},
 	}
 

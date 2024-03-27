@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"bufio"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 )
@@ -10,6 +13,14 @@ type writerRecorder struct {
 	w      http.ResponseWriter
 	body   []byte
 	status int
+}
+
+func (r *writerRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := r.w.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("hijack not supported")
+	}
+	return h.Hijack()
 }
 
 func (r *writerRecorder) WriteHeader(status int) {

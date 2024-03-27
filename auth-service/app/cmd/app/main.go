@@ -63,6 +63,11 @@ func run(
 		crypt,
 	)
 
+	err = userService.InitAdmin(getenv("ADMIN_EMAIL"))
+	if err != nil {
+		return err
+	}
+
 	accessTokenTTL, err := strconv.Atoi(getenv("ACCESS_TOKEN_TTL_MS"))
 	if err != nil {
 		return err

@@ -7,11 +7,21 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/handlers"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/repositories/chattersrepo"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/repositories/messagesrepo"
 	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/repositories/postgres"
 	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/servers"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/services/chatters"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/services/chattokens"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/services/hubs"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/services/messages"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/pkg/jwttokens"
 	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/pkg/logger"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/pkg/scrambler"
 )
 
 const logFileName = "logs/app.log"
@@ -29,7 +39,9 @@ func run(
 
 	logger.InitLogger(writer, logLevel)
 
-	_, err := postgres.NewPostgresDB(&postgres.DBConfigs{
+	aesScrambler := scrambler.NewAES256([]byte(getenv("CHAT_CRYPTO_KEY")))
+
+	db, err := postgres.NewPostgresDB(&postgres.DBConfigs{
 		Host:     getenv("DB_HOST"),
 		Port:     getenv("DB_PORT"),
 		Username: getenv("DB_USERNAME"),
@@ -40,7 +52,41 @@ func run(
 		return err
 	}
 
-	handler := handlers.NewHTTPHandler()
+	messagesRepo := messagesrepo.NewMessagesRepository(db)
+	messagesStorage := messages.NewMessagesStorage(messagesRepo, aesScrambler)
+
+	chattersRepo := chattersrepo.NewChattersRepository(db)
+	chattersStorage := chatters.NewChattersStorage(chattersRepo)
+
+	hubManager := hubs.NewHubManager(
+		ctx,
+		messagesStorage,
+	)
+
+	accessTokenTTL, err := strconv.Atoi(getenv("ACCESS_TOKEN_TTL_MS"))
+	if err != nil {
+		return err
+	}
+
+	refreshTokenTTL, err := strconv.Atoi(getenv("REFRESH_TOKEN_TTL_MS"))
+	if err != nil {
+		return err
+	}
+
+	tokensManager := jwttokens.NewTokensManager(
+		[]byte(getenv("JWT_SIGNATURE_KEY")),
+		time.Duration(accessTokenTTL)*time.Millisecond,
+		time.Duration(refreshTokenTTL)*time.Millisecond,
+	)
+
+	handler := handlers.NewHTTPHandler(
+		ctx,
+		hubManager,
+		tokensManager,
+		chattersStorage,
+		messagesStorage,
+		chattokens.NewChatTokens(),
+	)
 
 	server := servers.NewHTTPServer(httpPort, handler.Handler())
 

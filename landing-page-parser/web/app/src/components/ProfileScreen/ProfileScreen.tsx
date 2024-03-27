@@ -6,15 +6,20 @@ import OrdersAPI from "../../api/OrdersAPI/OrdersAPI";
 import OrdersList from "./OrdersList/OrdersList";
 import {Button} from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import {UserStatus} from "../../api/AuthAPI/Statuses";
+import ChatIcon from '@mui/icons-material/Chat';
 
 interface ProfileScreenProps {
     authAPI: AuthAPI
     ordersAPI: OrdersAPI
 
-    handleError: (message: string)=>void
+    userStatus: UserStatus
 
-    onBack:()=>void
-    onLogout:()=>void
+    handleError: (message: string) => void
+
+    onOpenUsersChat: () => void
+    onBack: () => void
+    onLogout: () => void
 }
 
 interface Order {
@@ -39,7 +44,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = (props) => {
             setCreatedAt(user.createdAt)
         })
 
-        getOrders().then((orders)=> {
+        getOrders().then((orders) => {
             if (!orders) return
 
             setOrders(orders)
@@ -49,8 +54,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = (props) => {
     const getUserProfile = async () => {
         try {
             return await props.authAPI.getProfile()
-        }
-        catch (e: any) {
+        } catch (e: any) {
             props.handleError(e.toString())
         }
     }
@@ -58,41 +62,38 @@ const ProfileScreen: React.FC<ProfileScreenProps> = (props) => {
     const getOrders = async () => {
         try {
             return await props.ordersAPI.getAllOrders()
-        }
-        catch (e: any) {
+        } catch (e: any) {
             props.handleError(e.toString())
         }
     }
 
-    const updateName = async(name: string)=> {
+    const updateName = async (name: string) => {
         try {
             return await props.authAPI.updateName(name)
-        }
-        catch (e: any) {
+        } catch (e: any) {
             props.handleError(e.toString())
         }
     }
 
-    const deleteOrder = async(orderId: number)=> {
+    const deleteOrder = async (orderId: number) => {
         try {
             return await props.ordersAPI.deleteOrder(orderId)
-        }
-        catch (e: any) {
+        } catch (e: any) {
             props.handleError(e.toString())
         }
     }
 
-    const handleUpdateName = (name: string)=> {
-        updateName(name).then(()=>{
+    const handleUpdateName = (name: string) => {
+        updateName(name).then(() => {
             setUserName(name)
         })
     }
 
     const handleOrderDelete = (orderId: number) => {
-        deleteOrder(orderId).then(()=>{
+        deleteOrder(orderId).then(() => {
             console.log("order #" + orderId + " successfully deleted")
 
-            getOrders().then((orders)=> {
+            getOrders().then((orders) => {
                 if (!orders) return
 
                 setOrders(orders)
@@ -104,9 +105,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = (props) => {
         <main className="ProfileScreen">
             <Button
                 variant="text"
-                startIcon={<ArrowBackIcon />}
+                startIcon={<ArrowBackIcon/>}
                 onClick={props.onBack}
-                style = {{
+                style={{
                     width: "fit-content"
                 }}
             >
@@ -120,6 +121,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = (props) => {
                 onUpdateName={handleUpdateName}
                 onLogout={props.onLogout}
             />
+
+            {
+                props.userStatus === UserStatus.StatusAdmin ?
+                    <Button
+                        variant="contained"
+                        endIcon={<ChatIcon/>}
+                        onClick={props.onOpenUsersChat}
+                        style={{width:"fit-content"}}
+                    >
+                        Чат с пользователями
+                    </Button> : null
+            }
 
             <OrdersList
                 orders={orders}

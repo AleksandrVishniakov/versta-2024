@@ -2,6 +2,7 @@ package jwttokens
 
 import (
 	"errors"
+	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/internal/services/usersservice"
 	"github.com/golang-jwt/jwt"
 	"time"
 )
@@ -12,8 +13,9 @@ type JWTokens struct {
 }
 
 type AccessTokenPayload struct {
-	UserId int    `json:"userId"`
-	Email  string `json:"email"`
+	UserId int                     `json:"userId"`
+	Email  string                  `json:"email"`
+	Status usersservice.UserStatus `json:"status"`
 }
 
 type RefreshTokenPayload struct {

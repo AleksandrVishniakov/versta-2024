@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import OrdersAPI from "./api/OrdersAPI/OrdersAPI";
 import AuthAPI from "./api/AuthAPI/AuthAPI";
+import {ChatAPI} from "./api/ChatAPI/ChatAPI";
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -17,6 +18,16 @@ const ordersAPI = new OrdersAPI(
     authAPI,
 )
 
+const chatAPI = new ChatAPI(
+    authAPI,
+    "http://localhost:8003"
+)
+
+chatAPI.preflightChatRequest()
+    .catch((error) => {
+        console.error("chat preflight request failed with error: " + error)
+    })
+
 const appHostField = document.querySelector("#app-host") as HTMLInputElement
 
 console.log(appHostField?.value)
@@ -26,6 +37,7 @@ root.render(
         <App
             ordersAPI={ordersAPI}
             authAPI={authAPI}
+            chatAPI={chatAPI}
         />
     </React.StrictMode>
 );

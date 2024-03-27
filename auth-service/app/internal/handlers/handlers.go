@@ -57,6 +57,7 @@ func (h *HTTPHandler) Handler() http.Handler {
 	mux.Handle("GET /api/user/my_profile", jwtAuth(http.HandlerFunc(h.getUserByToken)))
 
 	mux.HandleFunc("GET /api/internal/user/{email}/verification_code", h.getUserVerificationCode)
+	mux.HandleFunc("GET /api/internal/admin", h.getAdmin)
 
 	return Recovery(Logger(CORS(mux)))
 }
@@ -129,6 +130,7 @@ func (h *HTTPHandler) handleEmailVerification(w http.ResponseWriter, r *http.Req
 	tokens, err := h.tokensManager.CreateTokens(user.Id, jwttokens.AccessTokenPayload{
 		UserId: user.Id,
 		Email:  user.Email,
+		Status: user.Status,
 	})
 	if err != nil {
 		e.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -273,6 +275,7 @@ func (h *HTTPHandler) refreshTokens(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.tokensManager.RefreshTokens(refreshTokenCookie.Value, &jwttokens.AccessTokenPayload{
 		UserId: user.Id,
 		Email:  user.Email,
+		Status: user.Status,
 	})
 
 	if err != nil {
@@ -283,6 +286,25 @@ func (h *HTTPHandler) refreshTokens(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, getRefreshTokenCookie(tokens.RefreshToken, h.refreshTokenTTL))
 
 	err = parser.EncodeResponse(w, tokens.AccessToken, http.StatusOK)
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (h *HTTPHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
+	user, err := h.userService.FindAdmin()
+	if errors.Is(err, usersservice.ErrUserNotFound) {
+		e.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		e.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = parser.EncodeResponse(w, user, http.StatusOK)
 	if err != nil {
 		e.WriteError(w, http.StatusInternalServerError, err.Error())
 		return

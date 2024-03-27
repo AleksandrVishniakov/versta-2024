@@ -1,0 +1,84 @@
+.chat-message > .chat-message-content {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 14px;
+}
+
+.chat-message > .chat-message-timestamp, .message-date {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 11px;
+}
+
+.chat-message {
+    position: relative;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    padding: 5px 10px;
+
+    min-width: 70px;
+    width: fit-content;
+    max-width: 75%;
+
+    height: fit-content;
+    word-wrap: break-word;
+    border-radius: 10px;
+}
+
+.chat-message[data-message-sender="user"] {
+    background-color: #f8e896;
+
+    float: right;
+    left: -20px;
+
+    text-align: left;
+    border: 1px solid #dfd087;
+}
+
+.chat-message[data-message-sender="user"]::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-bottom: 15px solid #f8e896;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    bottom: 0;
+    right: -15px;
+}
+
+.chat-message[data-message-sender="user"] > .chat-message-timestamp {
+    position: absolute;
+    font-size: .85em;
+    font-weight: 300;
+    bottom: -20px;
+    right: 5px;
+}
+
+.chat-message[data-message-sender="manager"] {
+    float: left;
+    left: 20px;
+
+    position: relative;
+    background-color: #A8DDFD;
+    text-align: left;
+    border: 1px solid #97C6E3;
+}
+
+.chat-message[data-message-sender="manager"]::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 15px solid #A8DDFD;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    top: 0;
+    left: -15px;
+}
+
+.chat-message[data-message-sender="manager"] > .chat-message-timestamp {
+    position: absolute;
+    font-size: .85em;
+    font-weight: 300;
+    bottom: -20px;
+    left: 5px;
+}

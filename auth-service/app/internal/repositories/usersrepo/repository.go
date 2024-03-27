@@ -3,7 +3,6 @@ package usersrepo
 import (
 	"database/sql"
 	"errors"
-
 	"github.com/AleksandrVishniakov/versta-2024/auth-service/app/pkg/e"
 )
 
@@ -12,11 +11,16 @@ var (
 	ErrUserNotFound        = errors.New("user not found")
 )
 
+const (
+	statusAdmin = "admin"
+)
+
 type UsersRepository interface {
 	Create(user *UserEntity) (int, error)
 
 	FindByEmail(email string) (*UserEntity, error)
 	FindById(id int) (*UserEntity, error)
+	FindAdmin() (*UserEntity, error)
 
 	UpdateName(id int, name string) error
 	UpdateVerificationCode(id int, code string) error
@@ -40,11 +44,12 @@ func (u *usersRepository) Create(user *UserEntity) (id int, err error) {
 	defer func() { err = wrapErr(err) }()
 
 	row := u.db.QueryRow(
-		`INSERT INTO users (email, name, email_verification_code)
-				VALUES ($1, $2, $3)
+		`INSERT INTO users (email, name, status, email_verification_code)
+				VALUES ($1, $2, $3, $4)
 				RETURNING id`,
 		user.Email,
 		user.Name,
+		user.Status,
 		user.EmailVerificationCode.String,
 	)
 
@@ -69,7 +74,7 @@ func (u *usersRepository) FindByEmail(email string) (user *UserEntity, err error
 
 	user = &UserEntity{}
 
-	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.Status, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
 	}
@@ -92,7 +97,32 @@ func (u *usersRepository) FindById(id int) (user *UserEntity, err error) {
 
 	user = &UserEntity{}
 
-	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.Status, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, err
+}
+
+func (u *usersRepository) FindAdmin() (user *UserEntity, err error) {
+	defer func() { err = wrapErr(err) }()
+
+	row := u.db.QueryRow(
+		`SELECT u.* FROM users u
+				WHERE u.status = $1
+				LIMIT 1`,
+		statusAdmin,
+	)
+
+	user = &UserEntity{}
+
+	err = row.Scan(&user.Id, &user.Email, &user.Name, &user.Status, &user.EmailVerificationCode, &user.IsEmailVerified, &user.CreatedAt)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
 	}

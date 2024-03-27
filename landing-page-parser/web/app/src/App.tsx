@@ -5,34 +5,46 @@ import MainScreen from "./components/MainScreen/MainScreen";
 import authAPI from "./api/AuthAPI/AuthAPI";
 import ProfileScreen from "./components/ProfileScreen/ProfileScreen";
 import LoginScreen from "./components/LoginScreen/LoginScreen";
+import {ChatAPI} from "./api/ChatAPI/ChatAPI";
+import {UserStatus} from "./api/AuthAPI/Statuses";
+import ChatScreen from "./components/ChatScreen/ChatScreen";
 
 enum Screens {
     Main,
     Profile,
     Login,
+    ChatWithUsers
 }
+
 
 interface AppProps {
     ordersAPI: OrdersAPI
     authAPI: authAPI
+    chatAPI: ChatAPI
 }
 
 const App: React.FC<AppProps> = (props) => {
     const [userEmail, setUserEmail] = useState("")
+    const [_, setUserId] = useState(0)
     const [currentScreen, setCurrentScreen] = useState(Screens.Main)
+    const [userStatus, setUserStatus] = useState(UserStatus.StatusUser)
+
+    const getUserProfile = async () => {
+        try {
+            return await props.authAPI.getProfile()
+        } catch (e: any) {
+            handleError(e.toString())
+        }
+    }
 
     useEffect(() => {
-        const getUserProfile = async () => {
-            try {
-                return await props.authAPI.getProfile()
-            }
-            catch (e: any) {
-                handleError(e.toString())
-            }
-        }
 
         getUserProfile().then((user) => {
             if (!user) return
+
+            if (user.status === UserStatus.StatusAdmin) {
+                setUserStatus(UserStatus.StatusAdmin)
+            }
 
             setUserEmail(user.email)
         })
@@ -43,7 +55,15 @@ const App: React.FC<AppProps> = (props) => {
     }
 
     const handleAuth = (email: string) => {
-        setUserEmail(email)
+        getUserProfile().then((user) => {
+            if (!user) return
+
+            if (user.status === UserStatus.StatusAdmin) {
+                setUserStatus(UserStatus.StatusAdmin)
+            }
+
+            setUserEmail(user.email)
+        })
     }
 
     const appNavigation = () => {
@@ -52,12 +72,23 @@ const App: React.FC<AppProps> = (props) => {
                 return (
                     <MainScreen
                         ordersAPI={props.ordersAPI}
+                        chatAPI={props.chatAPI}
+
                         userEmail={userEmail}
                         handleError={handleError}
                         onAuth={handleAuth}
+                        userStatus={userStatus}
+                        onOpenUsersChat={userStatus === UserStatus.StatusAdmin ? () => {
+                            setCurrentScreen(Screens.ChatWithUsers)
+                        } : () => {
+                        }}
 
-                        onAuthUser={()=>{setCurrentScreen(Screens.Login)}}
-                        onOpenProfile={()=>{setCurrentScreen(Screens.Profile)}}
+                        onAuthUser={() => {
+                            setCurrentScreen(Screens.Login)
+                        }}
+                        onOpenProfile={() => {
+                            setCurrentScreen(Screens.Profile)
+                        }}
                     />
                 )
 
@@ -67,8 +98,17 @@ const App: React.FC<AppProps> = (props) => {
                         authAPI={props.authAPI}
                         ordersAPI={props.ordersAPI}
                         handleError={handleError}
-                        onBack={()=>{setCurrentScreen(Screens.Main)}}
-                        onLogout={()=>{setCurrentScreen(Screens.Login)}}
+                        userStatus={userStatus}
+                        onOpenUsersChat={userStatus === UserStatus.StatusAdmin ? () => {
+                            setCurrentScreen(Screens.ChatWithUsers)
+                        } : () => {
+                        }}
+                        onBack={() => {
+                            setCurrentScreen(Screens.Main)
+                        }}
+                        onLogout={() => {
+                            setCurrentScreen(Screens.Login)
+                        }}
                     />
                 )
 
@@ -77,11 +117,25 @@ const App: React.FC<AppProps> = (props) => {
                     <LoginScreen
                         authAPI={props.authAPI}
                         handleError={handleError}
-                        onBack={()=>{setCurrentScreen(Screens.Main)}}
-                        onAuth={(email)=>{
+                        onBack={() => {
+                            setCurrentScreen(Screens.Main)
+                        }}
+                        onAuth={(email: string, userId: number) => {
                             handleAuth(email)
+                            setUserId(userId)
                             setCurrentScreen(Screens.Profile)
                         }}
+                    />
+                )
+
+            case Screens.ChatWithUsers:
+                return (
+                    <ChatScreen
+                        chatAPI={props.chatAPI}
+                        onBack={() => {
+                            setCurrentScreen(Screens.Profile)
+                        }}
+                        handleError={handleError}
                     />
                 )
         }

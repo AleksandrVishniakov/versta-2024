@@ -7,11 +7,12 @@ import (
 )
 
 type UserResponseDTO struct {
-	Id              int       `json:"id"`
-	Email           string    `json:"email"`
-	Name            string    `json:"name"`
-	IsEmailVerified bool      `json:"isEmailVerified"`
-	CreatedAt       time.Time `json:"createdAt"`
+	Id              int        `json:"id"`
+	Email           string     `json:"email"`
+	Name            string     `json:"name"`
+	Status          UserStatus `json:"status"`
+	IsEmailVerified bool       `json:"isEmailVerified"`
+	CreatedAt       time.Time  `json:"createdAt"`
 }
 
 type VerificationCodeDTO struct {
@@ -33,6 +34,7 @@ func mapResponseFromEntity(crypt *encryptor.Encryptor, entity *usersrepo.UserEnt
 		Id:              entity.Id,
 		Email:           entity.Email,
 		Name:            name,
+		Status:          UserStatus(entity.Status),
 		IsEmailVerified: entity.IsEmailVerified,
 		CreatedAt:       entity.CreatedAt,
 	}, nil

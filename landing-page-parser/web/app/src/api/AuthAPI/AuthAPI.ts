@@ -5,6 +5,7 @@ interface User {
     id: number
     email: string
     name: string
+    status: string
     isEmailVerified: boolean,
     createdAt: Date
 }
@@ -17,6 +18,11 @@ class AuthAPI {
     }
 
     public async getProfile(email?: string): Promise<User> {
+
+        if (!window.sessionStorage.getItem("accessToken") || window.sessionStorage.getItem("accessToken") === "") {
+            await this.refreshTokens()
+        }
+
         const url = email ?
             this.host + "/api/user/email/" + email
             :

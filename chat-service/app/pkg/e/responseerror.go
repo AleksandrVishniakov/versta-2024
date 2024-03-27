@@ -2,10 +2,11 @@ package e
 
 import (
 	"fmt"
-	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/parser"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/pkg/parser"
 )
 
 type ResponseError struct {

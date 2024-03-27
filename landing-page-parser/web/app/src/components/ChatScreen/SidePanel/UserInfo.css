@@ -1,0 +1,22 @@
+.UserInfo {
+    padding: 3px 5%;
+    width: 80%;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+
+    transition-duration: .3s;
+    border-radius: 5px;
+}
+.UserInfo:hover {
+    background-color: rgba(136, 136, 136, 0.32);
+}
+
+.user-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

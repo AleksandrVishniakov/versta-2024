@@ -5,16 +5,18 @@ import VerificationCodeInput from "../common/Inputs/VerificationCodeInput";
 import './LoginScreen.css'
 import authAPI from "../../api/AuthAPI/AuthAPI";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {UserStatus} from "../../api/AuthAPI/Statuses";
 
 interface LoginScreenProps {
     authAPI: authAPI
     handleError: (message: string) => void
-    onAuth:(email: string) => void
+    onAuth:(email: string, userId: number) => void
 
     onBack:()=>void
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = (props) => {
+    const [userId, setUserId] = useState(0)
     const [authStep, setAuthStep] = useState(0)
     const [isDataSubmitting, setDataSubmitting] = useState(false)
     const [emailInputValue, setEmailInputValue] = useState("")
@@ -36,8 +38,10 @@ const LoginScreen: React.FC<LoginScreenProps> = (props) => {
         setDataSubmitting(true)
 
         try {
-            const userId = await props.authAPI.authUser(emailInputValue)
-            console.log("user #" + userId, "successfully authorized")
+            const id = await props.authAPI.authUser(emailInputValue)
+            console.log("user #" + id, "successfully authorized")
+
+            setUserId(id)
 
             setAuthStep(1)
         } catch (e: any) {
@@ -59,7 +63,7 @@ const LoginScreen: React.FC<LoginScreenProps> = (props) => {
             setAuthStep(0)
             setVerificationCodeInputValue("")
 
-            props.onAuth(emailInputValue)
+            props.onAuth(emailInputValue, userId)
         } catch (e: any) {
             props.handleError(e.toString())
         } finally {
