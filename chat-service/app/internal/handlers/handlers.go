@@ -18,10 +18,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	receiverId = 1
-)
-
 type HTTPHandler struct {
 	ctx              context.Context
 	upgrader         *websocket.Upgrader
@@ -31,6 +27,8 @@ type HTTPHandler struct {
 
 	chattersStorage chatters.Storage
 	messagesStorage messages.Storage
+
+	adminID int
 }
 
 func NewHTTPHandler(
@@ -40,6 +38,7 @@ func NewHTTPHandler(
 	chattersStorage chatters.Storage,
 	messagesStorage messages.Storage,
 	chatTokens *chattokens.ChatTokens,
+	adminID int,
 ) *HTTPHandler {
 	return &HTTPHandler{
 		ctx:              ctx,
@@ -48,6 +47,7 @@ func NewHTTPHandler(
 		chattersStorage:  chattersStorage,
 		messagesStorage:  messagesStorage,
 		chatTokens:       chatTokens,
+		adminID:          adminID,
 		upgrader: &websocket.Upgrader{
 			HandshakeTimeout: 1 * time.Second,
 			ReadBufferSize:   1024,
@@ -110,7 +110,7 @@ func (h *HTTPHandler) connectChat(w http.ResponseWriter, r *http.Request) (statu
 	}
 
 	ctx, cancel := context.WithCancel(h.ctx)
-	hub := h.hubManager.GetAvailableHub(chatterId, receiverId)
+	hub := h.hubManager.GetAvailableHub(chatterId, h.adminID)
 	client := hubs.NewWSClient(hub, conn, chatterId)
 
 	go func() {
@@ -175,7 +175,7 @@ func (h *HTTPHandler) getUnreadMessagesCount(w http.ResponseWriter, r *http.Requ
 		return http.StatusBadRequest, err
 	}
 
-	count, err := h.messagesStorage.GetUnreadCount(chatterId, receiverId)
+	count, err := h.messagesStorage.GetUnreadCount(chatterId, h.adminID)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -290,13 +290,13 @@ func (h *HTTPHandler) getAdminUnreadMessagesCount(w http.ResponseWriter, r *http
 	return http.StatusOK, nil
 }
 
-func (h *HTTPHandler) readAllMessages(w http.ResponseWriter, r *http.Request) (statusCode int, err error) {
+func (h *HTTPHandler) readAllMessages(_ http.ResponseWriter, r *http.Request) (statusCode int, err error) {
 	chatterId, err := strconv.Atoi(fmt.Sprintf("%v", r.Context().Value(ChatterIdContextKey)))
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
-	err = h.messagesStorage.ReadAll(chatterId, receiverId)
+	err = h.messagesStorage.ReadAll(chatterId, h.adminID)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -304,7 +304,7 @@ func (h *HTTPHandler) readAllMessages(w http.ResponseWriter, r *http.Request) (s
 	return http.StatusOK, nil
 }
 
-func (h *HTTPHandler) readAllAdminMessages(w http.ResponseWriter, r *http.Request) (statusCode int, err error) {
+func (h *HTTPHandler) readAllAdminMessages(_ http.ResponseWriter, r *http.Request) (statusCode int, err error) {
 	withId, err := strconv.Atoi(r.URL.Query().Get("with"))
 	if err != nil {
 		return http.StatusBadRequest, err

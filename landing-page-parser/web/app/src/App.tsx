@@ -16,7 +16,6 @@ enum Screens {
     ChatWithUsers
 }
 
-
 interface AppProps {
     ordersAPI: OrdersAPI
     authAPI: authAPI
@@ -25,7 +24,6 @@ interface AppProps {
 
 const App: React.FC<AppProps> = (props) => {
     const [userEmail, setUserEmail] = useState("")
-    const [_, setUserId] = useState(0)
     const [currentScreen, setCurrentScreen] = useState(Screens.Main)
     const [userStatus, setUserStatus] = useState(UserStatus.StatusUser)
 
@@ -48,7 +46,7 @@ const App: React.FC<AppProps> = (props) => {
 
             setUserEmail(user.email)
         })
-    }, [props.authAPI]);
+    });
 
     const handleError = (message: string) => {
         console.error(message)
@@ -57,6 +55,11 @@ const App: React.FC<AppProps> = (props) => {
     const handleAuth = (email: string) => {
         getUserProfile().then((user) => {
             if (!user) return
+
+            if (email !== user.email) {
+                handleError("mismatched emails")
+                return
+            }
 
             if (user.status === UserStatus.StatusAdmin) {
                 setUserStatus(UserStatus.StatusAdmin)
@@ -120,9 +123,8 @@ const App: React.FC<AppProps> = (props) => {
                         onBack={() => {
                             setCurrentScreen(Screens.Main)
                         }}
-                        onAuth={(email: string, userId: number) => {
+                        onAuth={(email: string) => {
                             handleAuth(email)
-                            setUserId(userId)
                             setCurrentScreen(Screens.Profile)
                         }}
                     />

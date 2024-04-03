@@ -3,13 +3,10 @@ package authapi
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/pkg/apiclient"
 	"github.com/AleksandrVishniakov/versta-2024/orders-service/app/utils"
-	"net/http"
-)
-
-const (
-	sessionCookieKey = "sessionKey"
 )
 
 type API interface {

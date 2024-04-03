@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/internal/api/authapi"
+	"github.com/AleksandrVishniakov/versta-2024/chat-service/app/pkg/apiclient"
 	"io"
 	"log"
 	"log/slog"
@@ -79,6 +82,28 @@ func run(
 		time.Duration(refreshTokenTTL)*time.Millisecond,
 	)
 
+	authAPI := authapi.NewAuthAPI(ctx, getenv("AUTH_SERVICE_HOST"), apiclient.NewAPIClient(ctx))
+	admin, err := authAPI.Admin()
+	if err != nil {
+		return err
+	}
+
+	chatter, err := chattersStorage.FindByUserId(admin.Id)
+	var adminID = 0
+	if err != nil && !errors.Is(err, chatters.ErrChatterNotFound) {
+		return err
+	}
+
+	if chatter != nil {
+		adminID = chatter.Id
+	} else {
+		id, err := chattersStorage.CreateWithId(admin.Id)
+		if err != nil {
+			return err
+		}
+		adminID = id
+	}
+
 	handler := handlers.NewHTTPHandler(
 		ctx,
 		hubManager,
@@ -86,6 +111,7 @@ func run(
 		chattersStorage,
 		messagesStorage,
 		chattokens.NewChatTokens(),
+		adminID,
 	)
 
 	server := servers.NewHTTPServer(httpPort, handler.Handler())
