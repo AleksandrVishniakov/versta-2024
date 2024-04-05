@@ -21,16 +21,18 @@
     height: fit-content;
     word-wrap: break-word;
     border-radius: 10px;
+
+    color: var(--on-background);
 }
 
 .chat-message[data-message-sender="user"] {
-    background-color: #f8e896;
+    background-color: var(--chat-message-to-bg);
 
     float: right;
     left: -20px;
 
     text-align: left;
-    border: 1px solid #dfd087;
+    border: 1px solid var(--chat-message-to-border);
 }
 
 .chat-message[data-message-sender="user"]::after {
@@ -38,11 +40,15 @@
     position: absolute;
     width: 0;
     height: 0;
-    border-bottom: 15px solid #f8e896;
+    border-bottom: 15px solid var(--chat-message-to-bg);
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
     bottom: 0;
     right: -15px;
+}
+
+.chat-message-timestamp {
+    color: var(--on-background);
 }
 
 .chat-message[data-message-sender="user"] > .chat-message-timestamp {
@@ -58,9 +64,9 @@
     left: 20px;
 
     position: relative;
-    background-color: #A8DDFD;
+    background-color: var(--chat-message-from-bg);
     text-align: left;
-    border: 1px solid #97C6E3;
+    border: 1px solid var(--chat-message-from-border);
 }
 
 .chat-message[data-message-sender="manager"]::after {
@@ -68,7 +74,7 @@
     position: absolute;
     width: 0;
     height: 0;
-    border-top: 15px solid #A8DDFD;
+    border-top: 15px solid var(--chat-message-from-bg);
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
     top: 0;

@@ -6,7 +6,7 @@
     width: clamp(350px, calc(50vw - 3%), 400px);
     height: 80vh;
     max-height: 800px;
-    background-color: white;
+    background-color: var(--chat-background);
     border-radius: 5px;
     box-shadow: 0px 10px 33px -3px rgba(0,0,0,0.2),0px -5px 50px -19px rgba(0, 0, 0, 0.2);;
     z-index: 999;
@@ -20,7 +20,7 @@
 
 @media (max-width: 500px) {
     .Chat {
-        height: 100vh;
+        height: 90vh;
         max-height: 100vh;
         padding: 0 2%;
         width: 96%;

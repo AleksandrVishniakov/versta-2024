@@ -11,16 +11,16 @@ const root = ReactDOM.createRoot(
 );
 
 const authAPI = new AuthAPI(
-    "http://localhost:8001"
+    `http://${document.location.hostname}:8001`
 )
 const ordersAPI = new OrdersAPI(
-    "http://localhost:8000",
+    `http://${document.location.hostname}:8000`,
     authAPI,
 )
 
 const chatAPI = new ChatAPI(
     authAPI,
-    "http://localhost:8003"
+    `http://${document.location.hostname}:8003`
 )
 
 chatAPI.preflightChatRequest()
@@ -28,9 +28,11 @@ chatAPI.preflightChatRequest()
         console.error("chat preflight request failed with error: " + error)
     })
 
-const appHostField = document.querySelector("#app-host") as HTMLInputElement
+let colorScheme: "light" | "dark" = "light"
 
-console.log(appHostField?.value)
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    colorScheme = "dark"
+}
 
 root.render(
     <React.StrictMode>
@@ -38,6 +40,7 @@ root.render(
             ordersAPI={ordersAPI}
             authAPI={authAPI}
             chatAPI={chatAPI}
+            theme={colorScheme}
         />
     </React.StrictMode>
 );

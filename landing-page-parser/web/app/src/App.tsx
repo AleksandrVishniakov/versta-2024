@@ -8,6 +8,7 @@ import LoginScreen from "./components/LoginScreen/LoginScreen";
 import {ChatAPI} from "./api/ChatAPI/ChatAPI";
 import {UserStatus} from "./api/AuthAPI/Statuses";
 import ChatScreen from "./components/ChatScreen/ChatScreen";
+import {createTheme, ThemeProvider} from "@mui/material";
 
 enum Screens {
     Main,
@@ -20,9 +21,17 @@ interface AppProps {
     ordersAPI: OrdersAPI
     authAPI: authAPI
     chatAPI: ChatAPI
+
+    theme: 'dark' | 'light'
 }
 
 const App: React.FC<AppProps> = (props) => {
+    const theme = createTheme({
+        palette: {
+            mode: props.theme,
+        },
+    });
+
     const [userEmail, setUserEmail] = useState("")
     const [currentScreen, setCurrentScreen] = useState(Screens.Main)
     const [userStatus, setUserStatus] = useState(UserStatus.StatusUser)
@@ -145,7 +154,9 @@ const App: React.FC<AppProps> = (props) => {
 
     return (
         <div className="App">
-            {appNavigation()}
+            <ThemeProvider theme={theme}>
+                {appNavigation()}
+            </ThemeProvider>
         </div>
     );
 }

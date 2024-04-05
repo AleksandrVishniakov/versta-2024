@@ -2,11 +2,20 @@
     position: relative;
     padding: 1px 0 2px clamp(20px, 5%, 5%);
     width: calc(100% - clamp(20px, 5%, 5%));
-    border: 1px solid black;
+    border: 1px solid var(--on-background);
     border-radius: 5px;
     display: flex;
     flex-direction: row-reverse;
     justify-content: space-between;
+
+    background-color: var(--background);
+}
+
+@media (prefers-color-scheme: dark) {
+    .Order {
+        border: none;
+        background-color: var(--container);
+    }
 }
 
 .Order::after {

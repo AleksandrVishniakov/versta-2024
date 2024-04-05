@@ -69,7 +69,7 @@ const ChatScreen: React.FC<ChatScreenProps> = (props) => {
             .catch((error) => {
                 props.handleError("get messages error: " + error)
             })
-    }, [selectedUserId]);
+    }, [props, selectedUserId]);
 
     const getAllChatters = () => {
         props.chatAPI.getAllChatters()
@@ -113,11 +113,11 @@ const ChatScreen: React.FC<ChatScreenProps> = (props) => {
 
             <section className="chat-section">
                 <div
-                    style={{width: "100%"}}
+                    style={{width: "100%", backgroundColor:"var(--background)", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center"}}
                 >
                     {
                         !selectedUserId || selectedUserId === 0 ?
-                            <p>Пользователь не выбран</p>
+                            <p className="no-user-selected">Пользователь не выбран</p>
                             :
                             <Chat
                                 chatterId={chatterId}

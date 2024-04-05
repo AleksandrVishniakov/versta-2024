@@ -99,11 +99,11 @@ services:
     depends_on:
       - orders-service
     environment:
-      HTTP_PORT: 80
+      HTTP_PORT: 8080
       LOG_LEVEL: PRODUCTION
       ORDERS_SERVICE_HOST: http://orders-service:8000
     ports:
-      - "80:80"
+      - "8080:8080"
     volumes:
       - ./landing-page-parser/logs:/go/logs
 

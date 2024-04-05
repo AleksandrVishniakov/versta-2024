@@ -1,31 +1,60 @@
-/*:root {*/
-/*  !* light mode *!*/
-/*  --background-light: #ffffff;*/
+:root {
+  /* light mode */
+  --background-light: #ffffff;
+  --on-background-light: #000000;
 
-/*  --on-background-light: #000000;*/
+  --chat-background-light: #ffffff;
+  --chat-message-from-bg-light: #A8DDFD;
+  --chat-message-from-border-light: #97C6E3;
+  --chat-message-to-bg-light: #f8e896;
+  --chat-message-to-border-light: #dfd087;
+
+  --container-light: #c3c3c3;
 
 
 
-/*  !* dark mode *!*/
-/*  --background-dark: #03061f;*/
+  /* dark mode */
+  --background-dark: #03061f;
+  --on-background-dark: #cbcbcb;
 
-/*  --on-background-dark: #cbcbcb;*/
+  --chat-background-dark: #28293a;
+  --chat-message-from-bg-dark: #05415e;
+  --chat-message-from-border-dark: #013f67;
+  --chat-message-to-bg-dark: #3d6340;
+  --chat-message-to-border-dark: #4e4b3e;
+
+  --container-dark: #28293a;
 
 
 
-/*  !*default*!*/
-/*  --background: var(--background-light);*/
+  /*default*/
+  --background: var(--background-light);
+  --on-background: var(--on-background-light);
 
-/*  --on-background: var(--on-background-light)*/
-/*}*/
+  --chat-background: var(--chat-background-light);
 
-/*@media (prefers-color-scheme: dark) {*/
-/*  :root {*/
-/*    --background: var(--background-dark);*/
+  --chat-message-from-bg: var(--chat-message-from-bg-light);
+  --chat-message-from-border: var(--chat-message-from-border-light);
+  --chat-message-to-bg: var(--chat-message-to-bg-light);
+  --chat-message-to-border: var(--chat-message-to-border-light);
 
-/*    --on-background: var(--on-background-dark);*/
-/*  }*/
-/*}*/
+  --container: var(--container-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--background-dark);
+    --on-background: var(--on-background-dark);
+
+    --chat-background: var(--chat-background-dark);
+    --chat-message-from-bg: var(--chat-message-from-bg-dark);
+    --chat-message-from-border: var(--chat-message-from-border-dark);
+    --chat-message-to-bg: var(--chat-message-to-bg-dark);
+    --chat-message-to-border: var(--chat-message-to-border-dark);
+
+    --container: var(--container-dark);
+  }
+}
 
 
 
@@ -36,6 +65,7 @@
 body {
   margin: 0;
   display: flex;
+  padding: 0 1%;
   flex-direction: column;
   align-items: center;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -43,6 +73,12 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  background-color: var(--background);
+}
+
+p, h1, h2, h3, h4, h5, h6, label {
+  color: var(--on-background);
 }
 
 .partially-transparent {

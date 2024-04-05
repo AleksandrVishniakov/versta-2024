@@ -206,7 +206,7 @@ func (h *HTTPHandler) completeOrder(_ http.ResponseWriter, r *http.Request) (int
 	return 0, nil
 }
 
-func (h *HTTPHandler) deleteOrder(w http.ResponseWriter, r *http.Request) (int, error) {
+func (h *HTTPHandler) deleteOrder(_ http.ResponseWriter, r *http.Request) (int, error) {
 	defer utils.CloseReadCloser(r.Body)
 
 	email := fmt.Sprintf("%v", r.Context().Value(EmailContextKey))
