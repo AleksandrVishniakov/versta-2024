@@ -8,6 +8,8 @@ import ChatIcon from '@mui/icons-material/Chat';
 import './MainScreen.css'
 import Chat from "./Chat/Chat";
 import {UserStatus} from "../../api/AuthAPI/Statuses";
+import TitleSection from "./TitleSection/TitleSection";
+import InfoSection from "./InfoSection/InfoSection";
 
 interface Message {
     id: number
@@ -100,7 +102,7 @@ const MainScreen: React.FC<MainScreenProps> = (props) => {
     }
 
     return (
-        <main>
+        <main className="MainScreen">
             <Chat
                 open={chatOpen}
                 messages={messages}
@@ -131,11 +133,16 @@ const MainScreen: React.FC<MainScreenProps> = (props) => {
                     : null
             }
 
-            <UserAccount
-                userEmail={props.userEmail}
-                onOpenProfile={props.onOpenProfile}
-                onAuthUser={props.onAuthUser}
+
+            <TitleSection
+                userAccountProps={{
+                    userEmail: props.userEmail,
+                    onOpenProfile: props.onOpenProfile,
+                    onAuthUser: props.onAuthUser
+                }}
             />
+
+            <InfoSection />
 
             <FormSection
                 ordersAPI={props.ordersAPI}
